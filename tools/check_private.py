@@ -118,7 +118,7 @@ def check(path: str, terms: list[tuple[str, str]]) -> list[str]:
     lower = path.lower()
     if lower in FORBIDDEN_FILES or any(lower.startswith(p) for p in FORBIDDEN_PREFIXES):
         return [f"{path}: is where personal files are kept, never in the repository"]
-    if "input-docs/" in lower or "/results/" in lower:
+    if any(part in lower for part in ("input-docs/", "/documents/", "/results/")) or lower.startswith(("documents/", "results/")):
         return [f"{path}: looks like a return's documents or results folder"]
     if any(lower.endswith(s) for s in DOCUMENT_SUFFIXES) and not lower.startswith(ALLOWED_BINARY_DIRS):
         return [f"{path}: is a document file; the repository holds no documents"]

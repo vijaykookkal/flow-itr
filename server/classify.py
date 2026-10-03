@@ -136,7 +136,7 @@ validating against this schema:
 """
 
 
-def run(ay: str, engine_name: str = "claude", on_event=None) -> dict:
+def run(ay: str, engine_name: str = "claude", on_event=None, cancel=None) -> dict:
     on_event = on_event or (lambda e: None)
 
     documents = sources.all_documents(ay)
@@ -157,6 +157,7 @@ def run(ay: str, engine_name: str = "claude", on_event=None) -> dict:
             engines.Request(
                 schedule="_classify", ay=ay, files=documents, prompt=prompt,
                 cwd=paths.ROOT, add_dirs=[paths.source_root(ay)],
+                cancel=cancel, time_limit=engines.time_limit_for(engine_name),
                 attempt=attempt, session_id=session_id,
                 repair_prompt=(
                     "Your previous JSON did not validate:\n"

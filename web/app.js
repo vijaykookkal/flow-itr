@@ -319,7 +319,8 @@ async function runReconcile(tab) {
         if (!l.trim()) continue;
         const e = JSON.parse(l);
         if (e.phase === 'done') {
-          run.log.push({ phase: 'done', detail: `${e.result.lines} line(s) compared` });
+          run.log.push({ phase: 'done', detail: e.result.status === 'stopped'
+            ? 'stopped; nothing saved' : `${e.result.lines} line(s) compared` });
         } else if (e.phase !== 'tool') {
           run.log.push(e);
         }
@@ -2374,7 +2375,7 @@ async function profileAction(payload) {
   try {
     await api('/api/profiles', { method: 'POST', body: JSON.stringify(payload) });
   } catch (err) {
-    alert(err.message);
+    toast(err.message, 'err');
     return false;
   }
   await refresh();
@@ -2399,120 +2400,42 @@ function fySelect(value, attrs = {}) {
   return box;
 }
 
-function profileRow(p, active) {
-  const field = (label, key, value, hint) =>
-    el('label', {},
-       label,
-       el('input', {
-         value: value || '',
-         placeholder: hint || '',
-         onchange: (e) => profileAction({
-           action: 'update', id: p.id, patch: { [key]: e.target.value },
-         }),
-       }));
-
-  return el(
-    'div',
-    { class: 'profile-row' + (active ? ' active' : '') },
-    el(
-      'div',
-      {},
-      el('div', { class: 'name' }, p.name,
-         active ? el('span', { class: 'chip', style: 'margin-left:8px' }, 'active') : null),
-      el('div', { class: 'form-grid', style: 'margin-top:8px' },
-         field('Return name', 'name', p.name),
-         el('label', {}, 'Financial year', fySelect(p.fy, {
-           onchange: (e) => profileAction({ action: 'update', id: p.id, patch: { fy: e.target.value } }) })),
-         field('PAN', 'pan', p.pan, 'AAAAA9999A'),
-         field('Documents folder', 'source_dir', p.source_dir),
-         field('Results folder', 'data_dir', p.data_dir)),
-      // A folder is stored relative to the Flow home when it is inside it, so
-      // where it actually is on this machine is said underneath.
-      el('div', { class: 'where' },
-         whereLine('Documents', p.source_path, p.source_path_exists),
-         whereLine('Results', p.data_path, p.data_path_exists),
-         active && state.export
-           ? whereLine('Workbook', state.export.path, true,
-                       state.export.exists ? null : 'not written yet')
-           : null),
-      // The settings live with the profile they belong to, and are edited here.
-      el('div', { class: 'form-grid', style: 'margin-top:10px' },
-         ...Object.entries(state.profileFields || {}).map(([key, field]) => {
-           const current = (p.settings || {})[key];
-           const save = (value) => profileAction({
-             action: 'update', id: p.id, patch: { settings: { [key]: value } } });
-           if (!field.options || !field.options.length) {
-             return el('label', { title: field.note || '' }, field.label,
-               el('input', { type: field.kind === 'date' ? 'date' : 'text',
-                             value: current || '', onchange: (e) => save(e.target.value) }));
-           }
-           const box = el('select', { title: field.note || '',
-                                      onchange: (e) => save(e.target.value) },
-             ...field.options.map((o) => el('option', { value: o.value, title: o.note }, o.label)));
-           // A profile made before a setting existed has no value for it,
-           // and is treated as having the default: show that, not a blank.
-           box.value = current ?? field.default ?? '';
-           return el('label', { title: field.note || '' }, field.label, box);
-         })),
-      el('div', { class: 'meta' }, `AY ${p.ay}`)
-    ),
-    el(
-      'div',
-      { class: 'acts' },
-      active ? null : el('button', { class: 'ghost small',
-        onclick: () => profileAction({ action: 'activate', id: p.id }) }, 'Use'),
-      el('button', {
-        class: 'ghost small',
-        title: 'Move the documents to a new folder and point the return at it',
-        onclick: () => {
-          const target = prompt('Move the documents to which folder?', p.source_path || p.source_dir);
-          if (target && target !== p.source_path && target !== p.source_dir) {
-            profileAction({ action: 'move', id: p.id, field: 'source_dir', target });
-          }
-        },
-      }, 'Move documents'),
-      el('button', {
-        class: 'ghost small',
-        title: 'Move the results to a new folder and point the return at it',
-        onclick: () => {
-          const target = prompt('Move the results to which folder?', p.data_path || p.data_dir);
-          if (target && target !== p.data_path && target !== p.data_dir) {
-            profileAction({ action: 'move', id: p.id, field: 'data_dir', target });
-          }
-        },
-      }, 'Move results'),
-      ...(state.home?.cloud || []).map((drive) => el('button', {
-        class: 'ghost small',
-        title: `Move both folders to ${drive.path}/Flow/${p.name}`,
-        onclick: () => putOnDrive(p, drive),
-      }, `Put on ${drive.kind}`)),
-      el('button', {
-        class: 'ghost small',
-        onclick: () => {
-          if (confirm(`Remove the return "${p.name}"?
-
-Its documents and results stay on disk at:
-${p.source_path || p.source_dir}
-${p.data_path || p.data_dir}`)) {
-            profileAction({ action: 'delete', id: p.id });
-          }
-        },
-      }, 'Remove')
-    )
-  );
+function profileInitials(name) {
+  const words = String(name || '?').replace(/[^A-Za-z0-9 ]+/g, ' ').trim().split(/\s+/);
+  return ((words[0] || '?')[0] + (words[1] ? words[1][0] : (words[0] || '').slice(1, 2))).toUpperCase();
 }
 
-/** One folder as it resolves here, with a word when it is not there. */
-function whereLine(label, path, exists, note) {
-  if (!path) return null;
-  return el('div', { class: 'where-line' },
-    el('span', { class: 'where-k' }, label),
-    el('span', { class: 'where-v', title: path }, path),
-    note ? el('span', { class: 'chip' }, note)
-         : exists ? null : el('span', { class: 'chip warn' }, 'not found on this machine'));
+/** Opens one of a return's folders in the file manager. */
+async function openReturnFolder(id, which) {
+  try {
+    await api('/api/open-folder', { method: 'POST', body: JSON.stringify({ id, which }) });
+  } catch (err) {
+    toast(`Could not open the folder: ${err.message}`, 'err');
+  }
 }
 
-/** Both of a profile's folders into a synced Drive folder, contents and all. */
+/** Where the list of returns, the rates and every return's folders are kept. */
+function homeCard() {
+  const home = state.home || {};
+  const cloud = home.cloud || [];
+  return el('details', { class: 'card ret-home' },
+    el('summary', {}, el('b', {}, 'Where your files are kept'),
+      el('span', { class: 'where-v', title: home.path || '' }, home.path || '')),
+    el('div', { class: 'card-body' },
+      el('p', {}, `This folder (chosen by ${home.source || 'the default'}) holds everything personal: the `
+        + 'list of returns, looked-up exchange rates and each return’s documents and results. By '
+        + `convention a return called X keeps its documents in X/${home.input_folder || 'documents'} and `
+        + `its results in X/${home.output_folder || 'results'}. A folder can also be any full path.`),
+      el('p', {}, 'To keep it somewhere else, set the FLOW_HOME environment variable, or put a file '
+        + 'called flow.local.json beside the program containing {"home": "D:/somewhere"}, and restart.'),
+      el('p', {}, cloud.length
+        ? `${cloud.map((c) => `${c.kind} is at ${c.path}`).join('; ')}. “Put on ${cloud[0].kind}” moves a `
+          + 'return’s two folders there; Drive then keeps them in step.'
+        : 'Google Drive: with Google Drive for desktop installed, a Drive is an ordinary folder (for example '
+          + 'G:/My Drive), and a return is put on it by giving that path as its folders.')));
+}
+
+/** Both of a return's folders into a synced Drive folder, contents and all. */
 async function putOnDrive(p, drive) {
   const base = `${drive.path}/Flow/${p.name}`;
   if (!confirm(`Move the documents and results of "${p.name}" to ${drive.kind}?
@@ -2521,9 +2444,8 @@ ${base}/${state.home.input_folder}
 ${base}/${state.home.output_folder}
 
 ${drive.kind} will upload them to your Google account and keep them in step. `
-    + `Flow itself sends nothing anywhere: it reads and writes the folder, and the `
-    + `Drive app does the rest. Wait for Drive to finish syncing before working on `
-    + `another machine.`)) return;
+    + `Flow itself sends nothing anywhere. Wait for Drive to finish syncing before `
+    + `working on another machine.`)) return;
   if (await profileAction({ action: 'move', id: p.id, field: 'source_dir',
                             target: `${base}/${state.home.input_folder}` })) {
     await profileAction({ action: 'move', id: p.id, field: 'data_dir',
@@ -2531,98 +2453,293 @@ ${drive.kind} will upload them to your Google account and keep them in step. `
   }
 }
 
-/** Where everything personal is kept, and how to keep it somewhere else. */
-function homeCard() {
-  const home = state.home || {};
-  const cloud = home.cloud || [];
-  return card('Where things live', el('div', { class: 'card-body' },
-    el('div', { class: 'where' },
-      whereLine('Flow home', home.path, true, null)),
-    el('p', { class: 'why', style: 'margin:10px 0 0' },
-       `Chosen by ${home.source || 'the default'}. Nothing personal is kept with the program: `
-       + 'the list of returns, looked-up exchange rates and every return’s folders are here. '
-       + `By convention a return called X keeps its documents in X/${home.input_folder || 'input-docs'} `
-       + `and everything produced from them in X/${home.output_folder || 'results'}. `
-       + 'Either folder can be pointed anywhere else by typing a full path above; a path that is not a full path is taken from the Flow home.'),
-    el('p', { class: 'why', style: 'margin:8px 0 0' },
-       'To keep the home somewhere else, set the FLOW_HOME environment variable, or put a file '
-       + 'called flow.local.json beside the program containing {"home": "D:/somewhere"}, and restart.'),
-    el('p', { class: 'why', style: 'margin:8px 0 0' },
-       cloud.length
-         ? `${cloud.map((c) => `${c.kind} is at ${c.path}`).join('; ')}. “Put on ${cloud[0].kind}” on a `
-           + 'return moves its two folders there; Drive then syncs them like any other folder.'
-         : 'Google Drive: no synced Drive folder was found on this machine. With Google Drive for '
-           + 'desktop installed, a Drive is an ordinary folder (for example G:/My Drive), and a '
-           + 'return is put on it by typing that path as its documents and results folders, such as '
-           + 'G:/My Drive/Flow/X/input-docs. Nothing else is needed: Flow and the reading engine '
-           + 'open it like any folder, and the Drive app does the syncing.')));
+// Which settings sit in which section of a return. Anything added to
+// profiles.FIELDS later and not named here lands under the tax settings.
+const RETURN_SECTIONS = {
+  person: ['dob', 'sex'],
+  tax: ['regime', 'age_band', 'audit_44ab'],
+  reading: ['engine', 'excel_export'],
+};
+
+/** One setting of a return as a form control, reporting changes to `onChange`. */
+function settingControl(key, field, value, onChange) {
+  const id = `ret-${key}`;
+  let box;
+  if (field.options && field.options.length) {
+    // Options that name a group (an engine's models) sit under that group.
+    const option = (o) => el('option', { value: o.value, title: o.note || '' }, o.label);
+    const kids = [];
+    let group = null;
+    for (const o of field.options) {
+      if (!o.group) { kids.push(option(o)); group = null; continue; }
+      if (!group || group.label !== o.group) { group = el('optgroup', { label: o.group }); kids.push(group); }
+      group.append(option(o));
+    }
+    box = el('select', { id, onchange: (e) => onChange(key, e.target.value, true) }, kids);
+    box.value = value ?? field.default ?? '';
+  } else {
+    box = el('input', { id, type: field.kind === 'date' ? 'date' : 'text', value: value || '',
+                        oninput: (e) => onChange(key, e.target.value, true) });
+  }
+  const chosen = (field.options || []).find((o) => o.value === box.value);
+  return el('div', { class: 'ret-field' },
+    el('label', { for: id }, field.label), box,
+    chosen?.note || field.note ? el('small', {}, chosen?.note || field.note) : null);
+}
+
+/** The selected return: everything about it, changed with one Save. */
+function returnDetail(p, isActive, store) {
+  const ui = state.ui.returns;
+  const draft = ui.draft;
+  const fields = state.profileFields || {};
+  const settings = { ...(p.settings || {}), ...(draft.settings || {}) };
+  const dirty = () => Object.keys(draft).length > 0;
+
+  const mark = () => {
+    const bar = $('#ret-save');
+    if (!bar) return;
+    bar.hidden = !dirty();
+  };
+  const change = (key, value) => {
+    if (['name', 'fy', 'pan'].includes(key)) {
+      if (String(value) === String(p[key] ?? '')) delete draft[key]; else draft[key] = value;
+    } else {
+      draft.settings = draft.settings || {};
+      if (String(value) === String((p.settings || {})[key] ?? fields[key]?.default ?? '')) delete draft.settings[key];
+      else draft.settings[key] = value;
+      if (!Object.keys(draft.settings).length) delete draft.settings;
+    }
+    mark();
+  };
+  const input = (key, label, value, attrs = {}) => el('div', { class: 'ret-field' },
+    el('label', { for: `ret-${key}` }, label),
+    el('input', { id: `ret-${key}`, value: value || '', ...attrs, oninput: (e) => change(key, e.target.value) }),
+    attrs.note ? el('small', {}, attrs.note) : null);
+  const section = (title, hint, ...kids) => el('section', { class: 'ret-section' },
+    el('div', { class: 'ret-section-h' }, el('h3', {}, title), hint ? el('p', {}, hint) : null),
+    el('div', { class: 'ret-grid' }, kids));
+  const settingsOf = (group) => (group === 'tax'
+    ? [...RETURN_SECTIONS.tax, ...Object.keys(fields).filter((k) => !Object.values(RETURN_SECTIONS).flat().includes(k))]
+    : RETURN_SECTIONS[group]).filter((k) => fields[k]).map((k) => settingControl(k, fields[k], settings[k], change));
+
+  const fy = fySelect(draft.fy ?? p.fy, { id: 'ret-fy', onchange: (e) => change('fy', e.target.value) });
+  const sharedWith = (store.profiles || []).filter((o) => o.id !== p.id && o.source_path === p.source_path).map((o) => o.name);
+
+  // Two different things, kept apart: "Change location" points the return at
+  // another folder and leaves every file where it is; "Move…" carries the
+  // folder's contents to the new place.
+  const folderRow = (label, which, path, exists, field) => {
+    const row = el('div', { class: 'ret-folder' });
+    const view = () => row.replaceChildren(
+      el('div', { class: 'ret-folder-h' }, el('b', {}, label),
+        exists ? null : chip('not found on this machine', 'warn')),
+      el('div', { class: 'ret-path', title: path }, path || '—'),
+      el('div', { class: 'ret-folder-acts' },
+        el('button', { class: 'ghost small', type: 'button', onclick: () => openReturnFolder(p.id, which) },
+           icon('documents'), 'Open'),
+        el('button', { class: 'ghost small', type: 'button', onclick: (e) => copyText(path || '', e.currentTarget) },
+           icon('copy'), 'Copy path'),
+        el('button', { class: 'ghost small', type: 'button', onclick: edit,
+                       title: 'Use another folder. Nothing is moved or copied.' }, icon('pencil'), 'Change location'),
+        el('button', { class: 'ghost small', type: 'button',
+                       title: 'Carry this folder’s contents to a new place, and use that.',
+                       onclick: () => {
+          const target = prompt(`Move the ${label.toLowerCase()} to which folder? Everything in it moves too.`, path);
+          if (target && target !== path) profileAction({ action: 'move', id: p.id, field, target });
+        } }, 'Move…')));
+    const edit = () => {
+      const box = el('input', { value: path || '', spellcheck: 'false', class: 'ret-path-input',
+        onkeydown: (e) => { if (e.key === 'Enter') use(); if (e.key === 'Escape') view(); } });
+      const use = async () => {
+        const target = box.value.trim();
+        if (!target || target === path) { view(); return; }
+        if (which === 'data' && !confirm(`Write this return's results to\n${target}\n\nThe current results stay where they are, and this return starts from what is in the new folder.`)) return;
+        if (await profileAction({ action: 'update', id: p.id, patch: { [field]: target } })) {
+          toast(which === 'source'
+            ? 'Documents are now read from the new folder. Sort the documents again so each schedule finds its papers.'
+            : 'Results are now written to the new folder.');
+        }
+      };
+      row.replaceChildren(
+        el('div', { class: 'ret-folder-h' }, el('b', {}, `${label}: use another folder`)),
+        box,
+        el('small', { class: 'ret-hint' }, which === 'source'
+          ? 'Paste the full path of the folder that holds the documents, for example D:\Tax\2025-26 or G:\My Drive\Tax. Nothing is moved or copied; the current folder is left as it is.'
+          : 'Paste the full path of the folder to write results to. Nothing is moved; the current results stay where they are.'),
+        el('div', { class: 'ret-folder-acts' },
+          el('button', { class: 'primary small', type: 'button', onclick: use }, 'Use this folder'),
+          el('button', { class: 'ghost small', type: 'button', onclick: view }, 'Cancel')));
+      box.focus();
+      box.select();
+    };
+    view();
+    return row;
+  };
+
+  const save = async () => {
+    const patch = { ...draft };
+    if (!Object.keys(patch).length) return;
+    ui.draft = {};
+    if (await profileAction({ action: 'update', id: p.id, patch })) {
+      toast(`Saved the changes to ${patch.name || p.name}.`);
+    } else {
+      ui.draft = patch;               // refused: keep what was typed
+    }
+    renderProfiles();
+  };
+
+  return el('div', { class: 'ret-detail' },
+    el('div', { class: 'ret-head' },
+      el('span', { class: 'ret-avatar big' }, profileInitials(p.name)),
+      el('div', { class: 'ret-head-t' },
+        el('h2', {}, p.name),
+        el('div', { class: 'ret-meta' }, `FY ${p.fy} · AY ${p.ay} · ITR-3 · resident and ordinarily resident`)),
+      isActive
+        ? el('span', { class: 'chip ok ret-inuse' }, icon('check'), 'In use')
+        : el('button', { class: 'primary', type: 'button',
+                         onclick: async () => {
+                           // Another return may be another year: start its state afresh.
+                           state.ay = null; state.runs = {};
+                           if (await profileAction({ action: 'activate', id: p.id })) toast(`Now working on ${p.name}.`);
+                         } },
+             'Use this return')),
+    el('div', { class: 'card ret-card' },
+      section('The person', 'Name the return as you like. The PAN and date of birth also open the password-protected AIS, TIS and Form 26AS.',
+        input('name', 'Return name', draft.name ?? p.name),
+        input('pan', 'PAN', draft.pan ?? p.pan, { placeholder: 'AAAAA9999A', maxlength: '10',
+              style: 'text-transform:uppercase' }),
+        ...settingsOf('person')),
+      section('How the tax is worked out', null,
+        el('div', { class: 'ret-field' }, el('label', { for: 'ret-fy' }, 'Financial year'), fy,
+           el('small', {}, 'Tax rates are built in for FY 2025-26.')),
+        ...settingsOf('tax')),
+      section('Reading and export', null, ...settingsOf('reading'),
+        el('div', { class: 'ret-field ret-note' },
+          el('a', { class: 'linkish', href: '#engines' }, 'Reading engine settings and local models'),
+          el('small', {}, 'Models, time limits, and open models that run on this computer.'))),
+      el('section', { class: 'ret-section' },
+        el('div', { class: 'ret-section-h' }, el('h3', {}, 'Folders'),
+          el('p', {}, sharedWith.length
+            ? `The documents folder is shared with ${sharedWith.join(', ')}: same papers, separate results.`
+            : 'Where this return’s documents are read from, and where its results are written.')),
+        el('div', { class: 'ret-folders' },
+          folderRow('Documents', 'source', p.source_path, p.source_path_exists, 'source_dir'),
+          folderRow('Results', 'data', p.data_path, p.data_path_exists, 'data_dir')),
+        (state.home?.cloud || []).length ? el('div', { class: 'ret-drive' },
+          (state.home.cloud || []).map((drive) => el('button', { class: 'ghost small', type: 'button',
+            onclick: () => putOnDrive(p, drive) }, `Put on ${drive.kind}`))) : null),
+      el('div', { class: 'ret-save', id: 'ret-save', hidden: !dirty() },
+        el('span', {}, 'You have unsaved changes.'),
+        el('button', { class: 'ghost', type: 'button', onclick: () => { ui.draft = {}; renderProfiles(); } }, 'Discard'),
+        el('button', { class: 'primary', type: 'button', onclick: save }, 'Save changes'))),
+    el('details', { class: 'ret-danger' },
+      el('summary', {}, 'Remove this return'),
+      el('p', {}, 'Removes it from the list only. Its documents and results stay on disk, and can be '
+                  + 'brought back by adding a return that points at the same folders.'),
+      el('button', { class: 'ghost danger', type: 'button', disabled: store.profiles.length < 2,
+        title: store.profiles.length < 2 ? 'This is the only return; add another before removing it.' : '',
+        onclick: async () => {
+          if (!confirm(`Remove the return "${p.name}" from the list? Its files stay on disk.`)) return;
+          if (await profileAction({ action: 'delete', id: p.id })) { ui.draft = {}; select('_profiles'); }
+        } }, 'Remove from the list')));
+}
+
+/** A new return: a name, a year, and folders that follow the name. */
+function newReturnForm() {
+  const derive = (name) => name.replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ').trim().replace(/[ .]+$/, '').replace(/\s+/g, ' ');
+  let typedFolders = false;
+  const src = el('input', { id: 'np-src', oninput: () => { typedFolders = true; } });
+  const data = el('input', { id: 'np-data', oninput: () => { typedFolders = true; } });
+  const name = el('input', { id: 'np-name', placeholder: 'for example Asha 2025-26', autofocus: '',
+    oninput: (e) => {
+      const f = derive(e.target.value);
+      if (!typedFolders) { src.value = f ? `${f}/${state.home?.input_folder || 'documents'}` : ''; data.value = f ? `${f}/results` : ''; }
+    } });
+  const create = async () => {
+    const wanted = name.value.trim();
+    if (!wanted) { name.focus(); return; }
+    state.ay = null; state.runs = {};
+    if (await profileAction({ action: 'create', name: wanted, fy: $('#np-fy').value, pan: $('#np-pan').value,
+                              source_dir: src.value, data_dir: data.value })) {
+      const made = (state.profiles?.profiles || []).find((x) => x.name === wanted);
+      toast(`Added ${wanted}. It is now the return in use.`);
+      select('_profiles', made?.id || null);
+    }
+  };
+  return el('div', { class: 'ret-detail' },
+    el('div', { class: 'ret-head' },
+      el('span', { class: 'ret-avatar big new' }, '+'),
+      el('div', { class: 'ret-head-t' }, el('h2', {}, 'New return'),
+        el('div', { class: 'ret-meta' }, 'One person and one financial year. Everything else can be set afterwards.'))),
+    el('div', { class: 'card ret-card' },
+      el('section', { class: 'ret-section' },
+        el('div', { class: 'ret-grid' },
+          el('div', { class: 'ret-field' }, el('label', { for: 'np-name' }, 'Return name'), name),
+          el('div', { class: 'ret-field' }, el('label', { for: 'np-fy' }, 'Financial year'), fySelect(state.fy, { id: 'np-fy' })),
+          el('div', { class: 'ret-field' }, el('label', { for: 'np-pan' }, 'PAN (optional)'),
+             el('input', { id: 'np-pan', placeholder: 'AAAAA9999A', maxlength: '10', style: 'text-transform:uppercase' })))),
+      el('section', { class: 'ret-section' },
+        el('div', { class: 'ret-section-h' }, el('h3', {}, 'Folders'),
+          el('p', {}, 'Made for you from the name, in your Flow home. Change them only to use folders that already exist, such as a Google Drive folder.')),
+        el('details', { class: 'ret-advanced' },
+          el('summary', {}, 'Choose different folders'),
+          el('div', { class: 'ret-grid' },
+            el('div', { class: 'ret-field' }, el('label', { for: 'np-src' }, 'Documents folder'), src),
+            el('div', { class: 'ret-field' }, el('label', { for: 'np-data' }, 'Results folder'), data)))),
+      el('div', { class: 'ret-save' },
+        el('span', {}, 'The new return becomes the one in use.'),
+        el('button', { class: 'ghost', type: 'button', onclick: () => select('_profiles') }, 'Cancel'),
+        el('button', { class: 'primary', type: 'button', onclick: create }, 'Create return'))));
 }
 
 function renderProfiles() {
   const store = state.profiles || { profiles: [], active: null };
+  const ui = (state.ui.returns ||= { draft: {}, shown: null });
   const panel = $('#panel');
+  const wanted = state.sub;
+  const isNew = wanted === 'new';
+  const current = isNew ? null
+    : store.profiles.find((p) => p.id === wanted) || store.profiles.find((p) => p.id === store.active) || store.profiles[0];
+  // A draft belongs to the return it was typed for.
+  const shownKey = isNew ? 'new' : current?.id;
+  if (ui.shown !== shownKey) { ui.draft = {}; ui.shown = shownKey; }
 
-  const shared = {};
-  for (const p of store.profiles) {
-    (shared[p.source_dir] = shared[p.source_dir] || []).push(p.name);
-  }
-  const sharing = Object.entries(shared).filter(([, names]) => names.length > 1);
+  const go = (id) => (e) => {
+    if (Object.keys(ui.draft).length && !confirm('Discard the unsaved changes?')) { e.preventDefault(); return; }
+    ui.draft = {};
+  };
+  const regimeName = (p) => ({ new: 'New regime', old: 'Old regime', compare: 'Both regimes' }[p.settings?.regime] || '');
 
-  const form = el('div', { class: 'card-body' },
-    el('div', { class: 'form-grid' },
-      el('label', {}, 'Return name', el('input', { id: 'np-name', placeholder: 'for example Asha 2025-26',
-        // The two folders follow the name as it is typed, by the same
-        // convention the server uses, until a folder is typed over by hand.
-        oninput: (e) => {
-          const folder = e.target.value.replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ').trim().replace(/[ .]+$/, '').replace(/\s+/g, ' ');
-          for (const [id, leaf] of [['#np-src', 'input-docs'], ['#np-data', 'results']]) {
-            const box = $(id);
-            if (!box.dataset.typed) box.value = folder ? `${folder}/${leaf}` : '';
-          }
-        } })),
-      el('label', {}, 'Financial year', fySelect(state.fy, { id: 'np-fy' })),
-      el('label', {}, 'PAN (optional)', el('input', { id: 'np-pan', placeholder: 'AAAAA9999A' })),
-      el('label', {}, 'Documents folder', el('input', { id: 'np-src', placeholder: 'filled in from the return name',
-        oninput: (e) => { e.target.dataset.typed = e.target.value ? '1' : ''; } })),
-      el('label', {}, 'Results folder', el('input', { id: 'np-data', placeholder: 'filled in from the return name',
-        oninput: (e) => { e.target.dataset.typed = e.target.value ? '1' : ''; } }))),
-    el('div', { style: 'margin-top:12px' },
-      el('button', { class: 'primary', onclick: async () => {
-        if (await profileAction({
-          action: 'create',
-          name: $('#np-name').value,
-          fy: $('#np-fy').value,
-          pan: $('#np-pan').value,
-          source_dir: $('#np-src').value,
-          data_dir: $('#np-data').value,
-        })) select('_profiles');
-      } }, 'Add return')),
-    el('p', { class: 'why', style: 'margin:10px 0 0' },
-       'Point two returns at the same documents folder to compute the same papers under different settings. Each still needs its own results folder — sharing that would overwrite one return with the other.')
-  );
+  const list = el('nav', { class: 'ret-list', 'aria-label': 'Returns' },
+    store.profiles.map((p) => el('a', {
+      class: 'ret-item' + (current && p.id === current.id ? ' selected' : ''),
+      href: `#_profiles/${p.id}`, onclick: go(p.id),
+      'aria-current': current && p.id === current.id ? 'true' : null,
+    },
+      el('span', { class: 'ret-avatar' }, profileInitials(p.name)),
+      el('span', { class: 'ret-item-t' },
+        el('b', {}, p.name),
+        el('small', {}, [`FY ${p.fy}`, regimeName(p)].filter(Boolean).join(' · '))),
+      p.id === store.active ? el('span', { class: 'chip ok' }, 'In use') : null)),
+    el('a', { class: 'ret-item add' + (isNew ? ' selected' : ''), href: '#_profiles/new', onclick: go('new') },
+      el('span', { class: 'ret-avatar new' }, '+'), el('span', { class: 'ret-item-t' }, el('b', {}, 'New return'))));
 
-  // replaceChildren() prints a null as the word "null", so the optional card
-  // is filtered out rather than passed through.
-  panel.replaceChildren(...[
-    el('div', { class: 'tab-head' },
-      el('h1', {}, 'Returns'),
-      el('div', { class: 'folder' },
-         'A return is one person and one financial year, with its settings and the folders its documents and results are in. Switch between them with Return at the top.')),
-    card(`${plural(store.profiles.length, 'return')}`,
-         el('div', { class: 'card-body' },
-            store.profiles.length
-              ? store.profiles.map((p) => profileRow(p, p.id === store.active))
-              : el('div', { class: 'empty' }, 'No returns yet.'))),
-    sharing.length
-      ? card('Shared document folders',
-             el('div', { class: 'card-body' },
-                el('ul', { class: 'plain' },
-                   sharing.map(([dir, names]) =>
-                     el('li', {}, dir, el('span', { class: 'why' }, names.join(', ')))))))
-      : null,
-    card('Add a return', form),
-    homeCard(),
-  ].filter(Boolean));
+  panel.replaceChildren(
+    el('div', { class: 'page-head' },
+      el('div', {},
+        el('div', { class: 'page-title' }, el('h1', {}, 'Returns')),
+        el('p', { class: 'page-sub' },
+          'A return holds everything for one income-tax return: whose it is and for which year, how the tax '
+          + 'is to be worked out, the documents it reads, and all that comes from them: the figures read, your '
+          + 'corrections and decisions, the computation, the reconciliation and the Excel workbook.'),
+        el('p', { class: 'page-sub' },
+          'Each return keeps its own, so two can sit side by side, even for the same person and year, to compare '
+          + 'regimes or reading engines. The one marked In use is what every other page shows.'))),
+    el('div', { class: 'ret-layout' },
+      list,
+      isNew ? newReturnForm() : current ? returnDetail(current, current.id === store.active, store)
+            : el('div', { class: 'empty-state' }, el('h3', {}, 'No returns yet'))),
+    homeCard());
 }
 
 /* ------------------------------------------------------------- settings */
@@ -2692,6 +2809,9 @@ async function runTab(tab) {
           if (evt.phase === 'done') {
             run.log.push({ phase: 'done', detail: `${evt.result.status} · ${evt.result.run_id || ''}` });
             run.lastRun = { tab: tab.id, engine, ...evt.result };
+            if (evt.result.status === 'stopped') {
+              run.lastRun.errors = (run.log.find((x) => x.phase === 'stopped') || {}).detail || evt.result.errors;
+            }
           } else {
             if (evt.phase === 'error') run.lastRun = { tab: tab.id, engine, status: 'failed', errors: evt.detail };
             run.log.push(evt);
@@ -2712,7 +2832,9 @@ async function runTab(tab) {
   }
   await refresh().catch(() => renderPanel());
   // What the run did to the one figure everything leads to.
-  if (run.lastRun && run.lastRun.status !== 'failed') {
+  if (run.lastRun?.status === 'stopped') {
+    toast(`${tabName(tab.id)}: stopped. Nothing from that reading was saved.`);
+  } else if (run.lastRun && run.lastRun.status !== 'failed') {
     toast(balanceChange(before, balance(),
       `${tabName(tab.id)} ${tab.kind === 'derive' ? 'recomputed' : 'read'}.`));
   }

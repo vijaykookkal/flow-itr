@@ -19,15 +19,15 @@ Every number traces to a file; every change to a number is in git.
 
 | Area | Decision | Why |
 |---|---|---|
-| Source repository | A profile's documents folder: a plain local folder outside the project, `<home>/<profile>/input-docs` by convention (§15) | Drive adds OAuth and a network hop for no benefit. A Drive synced by Drive for desktop is an ordinary folder, so using one is a path, not a feature |
-| AI engine | Claude Code headless (`claude -p`), driven by a local Python agent | Uses your existing subscription, reads PDF/XLSX natively, runs on your machine so statements never leave it |
-| AI write access | **None.** Tools restricted to `Read`, `Glob`, `Grep` | The model proposes JSON on stdout; the *server* validates and writes it. The model can never touch your repo |
+| Source repository | A profile's documents folder: a plain local folder outside the project, `<home>/<profile>/documents` by convention (§15) | Drive adds OAuth and a network hop for no benefit. A Drive synced by Drive for desktop is an ordinary folder, so using one is a path, not a feature |
+| AI engine | Pluggable, chosen per return: Claude Code headless (`claude -p`), Codex, or an open model run locally through Ollama (§16) | Use a subscription the person already has, or keep every document on the machine with a local model. Whichever reads, the server validates and stores the answer the same way |
+| AI write access | **None.** Claude's tools are restricted to `Read`, `Glob`, `Grep`; a local model has no tools at all and sees only the text it is sent | The model proposes JSON; the *server* validates and writes it. The model can never touch your files |
 | Persistence | JSON per schedule in the profile's results folder, outside the project (§15). The repository holds the program only | The extracted data is the asset, and it is one person's; a repository other people clone must not contain it |
 | Web UI | Static HTML/CSS/JS, no framework, no build step, served by the local agent | A tax form is a form. This must still run in 2031 without an `npm install` |
-| Server | Python 3.13 stdlib, one optional dependency (`jsonschema`) | Already installed; no Node on this machine; no toolchain to rot |
+| Server | Python 3.10+ standard library only | Clone and run: nothing to install, no toolchain to rot |
 | Money | Integer rupees everywhere. No floats, ever | Floats and tax arithmetic do not mix, and ITR schedules are rupee-rounded anyway |
 | Git role | The repository versions the program. A results folder may be made a private repository of its own, where every AI run is a reviewable commit and a `filed/AY20xx-yy` tag marks what was submitted (§10) | The two have different audiences: the program is shared, the return is not |
-| GitHub Actions | Deferred, as you asked. Layout is CI-ready (§10) | Source control now, automation when it earns its keep |
+| GitHub Actions | Deferred. Layout is CI-ready (§10) | Source control now, automation when it earns its keep |
 
 ## 3. Repository layout
 
@@ -35,7 +35,7 @@ Every number traces to a file; every change to a number is in git.
 <home>/                              yours, outside the repository (§15)
 ├── profiles.json                    profiles, their settings and folders
 ├── fx_rates.json                    SBI TT buying rates looked up or entered
-├── <profile>/input-docs/…           raw documents
+├── <profile>/documents/…           raw documents
 ├── <profile>/results/
 │   ├── extracted/<schedule>.json    AI output. Machine-owned, never hand-edited
 │   ├── overrides/<schedule>.json    your corrections, with reasons. Human-owned
@@ -393,8 +393,11 @@ something else is finished, and each place says what it needs as a status.
 
 | Place | What it is for |
 |---|---|
+| Home | The page Flow opens on: what Flow is, the return in use, how it works, and the getting-started guide as a section |
+| Returns | One return at a time: whose it is, the year, how the tax is worked out, the reading engine, its folders |
+| Schedules | Every schedule as a card: what it is about, what it reads, where it stands, and its Read or Recompute button |
 | Summary | What is owed, key ratios and graphics, the income and tax statements, what is waiting on a person, and how each schedule reconciles |
-| Documents | Every file: what it was recognised as, which schedules it feeds, whether each has read it, the figures taken from it |
+| Documents | Every file: what it was recognised as, which schedules it feeds, whether each has read it, the figures taken from it. A second tab, Get documents, opens each usual source's website and says what to download (`config/document_sources.json`) |
 | A schedule | The form in the return's own numbering, with tabs for its ledger, reconciliation, documents, decisions and history |
 | Review | Everything only a person can settle, from every schedule, each settled with a reason |
 | Reconcile | Your documents against the department's record, and against a filed return if one is supplied |
@@ -402,7 +405,7 @@ something else is finished, and each place says what it needs as a status.
 
 Four things stay in view whatever is open: which return this is, search over
 every line, amount and document (Ctrl K), whether the computation is current,
-and the balance.
+and a way back to Getting started.
 
 **The Summary page draws the return as well as stating it** (`web/charts.js`): the
 effective and marginal rates, income after tax, the share already paid, what
@@ -469,7 +472,7 @@ home. First run writes one profile, DEFAULT, and makes its folders, which is
 what makes "clone and go" true. What stays in the repository under `config/` is
 configuration of the *program*: the tabs and what each reads.
 
-**The convention.** A profile called X reads `<home>/X/input-docs` and writes
+**The convention.** A profile called X reads `<home>/X/documents` and writes
 `<home>/X/results`. Folders inside the home are stored relative to it, so
 the home moves between machines as one piece; a folder anywhere else is stored
 as an absolute path. Two profiles may share a documents folder (one set of
@@ -509,3 +512,68 @@ PAN, date of birth, e-mail, mobile or account numbers, read from the Flow home a
 commit time rather than kept in the repository. Fixtures use invented names and
 specimen PANs. Prompts and schemas describe kinds of document, never a
 particular person's.
+
+## 16. Reading engines, including a local model
+
+**Engines and models.** An engine is how Flow reaches a reader: the Claude Code
+command-line tool, the Codex command-line tool, or Ollama's API on this
+computer. Every engine offers models, and the model is the reader: Claude
+Code's Opus, Sonnet and Haiku; Codex's default and any model names the person
+adds; each model installed in Ollama. Each engine module declares
+`model_list()` and `default_model()`, and a return names what it reads with as
+`engine:model` (`claude:opus`, `ollama:gpt-oss:20b`); a bare `claude` means that
+engine's default model. Settings sit at the level they belong to: a time limit
+and an address per engine, a window and a reasoning level per Ollama model.
+Every list of readers in the page groups models under their engine.
+
+An engine is anything that turns a prompt and a set of documents into a JSON
+answer (`server/engines/`). Everything that makes the answer trustworthy --
+schema validation, the repair loop, provenance, the three-layer merge -- is in
+`runner.py` and is the same whichever engine read. Each return chooses its
+engine under Returns; the engine and model are part of every run's fingerprint
+and are recorded on every output.
+
+| Engine | How it reads | What leaves the computer |
+|---|---|---|
+| Claude Code | An agent: opens the documents itself, read-only tools, confined to the schedule's folders | The documents it reads, to Anthropic, under the user's account |
+| Codex | An agent with a sandboxed shell | The documents it reads, to OpenAI, under the user's account |
+| Ollama (`ollama:<model>`) | No tools: Flow sends the text it already makes of each document (`server/convert.py`) | Nothing |
+
+**The local engine** (`server/engines/ollama_local.py`) talks to Ollama's HTTP
+API on the same machine. Three decisions shape it:
+
+* **Send text, never cut it short.** A model behind Ollama cannot open a file,
+  so each document's text is sent under its original name, with the runs of
+  spaces a PDF uses for layout squeezed to two. Ollama gives a model only the
+  window it is asked for (the Window setting on the Reading engines page, 64k by
+  default). If a schedule's documents do not fit, the run is refused with their
+  size: a dropped page is a dropped transaction, and a silent one. Sorting is
+  the exception, since it needs only the start of each document.
+* **Table plans stay table plans.** For a tabular schedule the model sees the
+  heads of the spreadsheets, as any engine does, and code reads the rows; only
+  the PDFs that must be read whole are sent in full.
+* **The schema is enforced by the server when it can be.** Ollama constrains
+  the reply to the schedule's JSON schema; if a schema is beyond it, plain JSON
+  mode is used and the runner's validation and repair do the rest. A repair
+  continues the same conversation.
+
+Each installed model is offered as its own choice, so a return names the model
+it reads with. The default prefers light mixture-of-experts models
+(`gpt-oss:20b`, `qwen3:30b-a3b`), which run on a laptop processor with no
+graphics card because only a few billion parameters work per token.
+
+**Limits, measured on a real year's documents.** Deductions, Taxes paid and
+General information fit a 64k window; Salary, Capital gains and Foreign income
+need about 128k; a year of bank statements for Other sources or Books is around
+300k tokens, beyond a laptop model. Scanned PDFs without text cannot be read,
+and the exchange-rate lookup, which reads a large rate archive, needs Claude or
+Codex. Reading a large schedule document by document and merging the answers
+would lift the size limit. It is not built, because a generic merge of partial
+schedules is exactly where silent double-counting would creep in.
+
+**Where engine settings live.** `config/tabs.json` holds the program's
+defaults: the default engine, the time limits, Ollama's address, window and
+reasoning level. What a person changes on the Reading engines page is kept in
+`settings.json` in the Flow home and laid over those defaults
+(`server/settings.py`). A `git pull` then never overwrites a choice, and a push
+never publishes one; deleting the file returns everything to the defaults.

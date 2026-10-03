@@ -40,7 +40,7 @@ BROWSERS = [
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
 ]
 AREAS = ["overview", "documents", "schedules", "review", "reconcile", "reconcile/filed", "handoff",
-         "home", "_profiles"]
+         "home", "_profiles", "about", "about/changes", "about/about", "engines"]
 SCHEDULE_TABS = ["ledger", "reconciliation", "documents", "decisions", "history"]
 
 

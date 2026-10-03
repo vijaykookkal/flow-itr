@@ -118,7 +118,7 @@ def cmd_status(args):
     current = profiles.active()
     if current:
         print(f"return: {current['name']} (FY {current['fy']})  settings={current['settings']}")
-    for e in engine_registry.describe():
+    for e in engine_registry.describe():  # each engine, with how many models it offers
         print(f"  engine {e['id']:<8} {'available' if e['available'] else 'NOT FOUND':<10} "
               f"reads confined: {e['confines_reads']}")
     print(f"source root: {paths.source_root(args.ay)}")
@@ -151,12 +151,12 @@ def main(argv=None):
 
     r = sub.add_parser("run")
     r.add_argument("--tab", required=True)
-    r.add_argument("--engine", default=_default_engine(), choices=["codex", "claude", "mock"])
+    r.add_argument("--engine", default=_default_engine(), help="claude, codex, ollama, ollama:<model> or mock")
     r.add_argument("--force", action="store_true")
     r.set_defaults(func=cmd_run)
 
     ra = sub.add_parser("run-all")
-    ra.add_argument("--engine", default=_default_engine(), choices=["codex", "claude", "mock"])
+    ra.add_argument("--engine", default=_default_engine(), help="claude, codex, ollama, ollama:<model> or mock")
     ra.add_argument("--force", action="store_true")
     ra.set_defaults(func=cmd_run_all)
 
@@ -171,7 +171,7 @@ def main(argv=None):
     o.set_defaults(func=cmd_override)
 
     c = sub.add_parser("classify", help="route documents to schedules with an AI pass")
-    c.add_argument("--engine", default=_default_engine(), choices=["codex", "claude", "mock"])
+    c.add_argument("--engine", default=_default_engine(), help="claude, codex, ollama, ollama:<model> or mock")
     c.set_defaults(func=cmd_classify)
 
     sub.add_parser("profiles").set_defaults(func=cmd_profiles)

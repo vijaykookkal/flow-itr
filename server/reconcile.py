@@ -231,7 +231,7 @@ def refresh_all(ay: str) -> list[str]:
     return changed
 
 
-def run(ay: str, tab_id: str, engine_name: str, on_event) -> dict:
+def run(ay: str, tab_id: str, engine_name: str, on_event, cancel=None) -> dict:
     on_event = on_event or (lambda e: None)
     summary = paths.read_json(paths.data_root(ay) / "resolved" / "summary.json") or {}
     # Capital Gains measures come from the computed ledger (foreign amounts are
@@ -270,6 +270,7 @@ def run(ay: str, tab_id: str, engine_name: str, on_event) -> dict:
     engine = engines.get(engine_name)
     reply = engine.run(
         engines.Request(schedule=tab_id, ay=ay, files=engine_files,
+                        cancel=cancel, time_limit=engines.time_limit_for(engine_name),
                         prompt=build_prompt(tab_id, ay, engine_files, available),
                         cwd=paths.ROOT,
                         add_dirs=sources.scan_dirs(ay, tab_id) + derived_dirs

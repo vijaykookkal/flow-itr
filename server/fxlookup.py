@@ -173,7 +173,7 @@ def verify(entry: dict) -> tuple[bool, str]:
 
 # --------------------------------------------------------------------- run
 
-def run(needs: list[dict], engine_name: str, on_event) -> dict:
+def run(needs: list[dict], engine_name: str, on_event, cancel=None) -> dict:
     """Look up every needed rate, keep the ones that check out."""
     if not needs:
         return {"saved": [], "rejected": [], "questions": []}
@@ -195,6 +195,7 @@ def run(needs: list[dict], engine_name: str, on_event) -> dict:
         f"{n['currency']} {n['date']}" for n in needs)})
     reply = engine.run(
         engines.Request(schedule="fx_rates", ay="", files=[], prompt=build_prompt(needs, archives),
+                        cancel=cancel, time_limit=engines.time_limit_for(engine_name),
                         cwd=ARCHIVE_DIR, add_dirs=[ARCHIVE_DIR]),
         on_event,
     )

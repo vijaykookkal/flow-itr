@@ -31,10 +31,23 @@ from pathlib import Path
 
 from . import EngineError, Reply, Request
 
-LABEL = "codex"
+LABEL = "Codex"
 NOTE = "ChatGPT subscription. Reads documents by running shell commands; reads are not confined to the tab's folder."
 SELECTABLE = True
 CONFINES_READS = False
+
+
+def model_list() -> list[dict]:
+    """Codex's own default, and any model names the person has added."""
+    from server import settings
+    added = settings.get("codex", "models", default=[]) or []
+    return ([{"id": "default", "label": "Codex's own default", "note": "Whatever model your Codex is set to."}]
+            + [{"id": n, "label": n, "note": "Added by you.", "added": True} for n in added])
+
+
+def default_model() -> str:
+    from server import settings
+    return settings.get("codex", "model", default="") or "default"
 
 _CODEX_HOME = Path(os.environ.get("CODEX_HOME") or (Path.home() / ".codex"))
 _INSTALL_ROOT = Path.home() / "AppData" / "Local" / "OpenAI" / "Codex" / "bin"
@@ -75,6 +88,9 @@ def _readable(command) -> str:
 
 
 def run(req: Request, on_event, model: str | None = None, timeout: int = 1800) -> Reply:
+    model = model or default_model()
+    if model == "default":
+        model = None                    # no -m: Codex's own default
     binary = find_binary()
     if not binary:
         raise EngineError(
@@ -119,6 +135,8 @@ def run(req: Request, on_event, model: str | None = None, timeout: int = 1800) -
         # empty message and the real reason -- "you have hit your usage limit"
         # -- never reaches you.
         failure = ""
+        from . import Watch
+        watch = Watch(req, proc.kill, timeout)
         for line in proc.stdout:  # type: ignore[union-attr]
             line = line.strip()
             if not line.startswith("{"):
@@ -154,8 +172,10 @@ def run(req: Request, on_event, model: str | None = None, timeout: int = 1800) -
                               "detail": f"{usage.get('input_tokens', 0):,} in / "
                                         f"{usage.get('output_tokens', 0):,} out"})
 
+        watch.finish()
+        watch.raise_if_ended()
         stderr = proc.stderr.read() if proc.stderr else ""
-        proc.wait(timeout=timeout)
+        proc.wait(timeout=60)
 
         text = last.read_text("utf-8") if last.exists() else streamed
 

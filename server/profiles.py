@@ -10,7 +10,7 @@ Three rules shape this:
   * **Outside the program.** The profile list and every profile's folders live
     in the Flow home (see paths.py), never in the repository: they hold a PAN,
     a date of birth and a year of someone's finances. By convention a profile
-    called X keeps its documents in `<home>/X/input-docs` and everything
+    called X keeps its documents in `<home>/X/documents` and everything
     produced from them in `<home>/X/results`; either may be pointed
     anywhere else, a synced cloud folder included.
 
@@ -340,6 +340,10 @@ def update(profile_id: str, patch: dict) -> dict:
         "ay": ay_for(fy),
         "pan": (pan or "").upper(),
     })
+    if patch.get("source_dir"):
+        wanted = paths.resolve_dir(patch["source_dir"].replace("\\", "/"))
+        if not wanted.is_dir():
+            raise ValueError(f"there is no folder at {wanted}. Check the path, or create the folder first.")
     for key in ("source_dir", "data_dir"):
         if patch.get(key):
             profile[key] = paths.portable_dir(patch[key].replace("\\", "/"))
@@ -432,34 +436,43 @@ def move_dir(profile_id: str, field: str, target: str) -> dict:
 
 
 def engine_options() -> list[dict]:
-    """The engines a profile may choose, from the registry, so adding an
-    engine never means touching this file."""
+    """What a return may read with: every engine's models, grouped by engine.
+    Built from the engines themselves, so adding one touches no file here."""
     from . import engines
+    from . import settings as user_settings
 
-    listed = [e for e in engines.describe() if e["selectable"]]
-    default = paths.load_tabs().get("default_engine", "")
-    named = next((e["label"] for e in listed if e["id"] == default), default)
-    return [{"value": "", "label": f"The default ({named})",
-             "note": "Whichever engine the program is set to use; the first one found if that is missing."}] + [
-        {"value": e["id"],
-         "label": e["label"] + ("" if e["available"] else " (not found)"),
-         "note": e["note"] + ("" if e["confines_reads"] else
-                              " Its reading is not confined to the schedule's own folder.")}
-        for e in listed]
+    listed = engines.describe()
+    default = engines.canonical(user_settings.default_engine(), listed)
+    return [{"value": "", "label": f"The default ({engines.label_of(default, listed)})",
+             "note": "Whichever engine and model are set as the default on the Reading engines page."}] + [
+        {"value": c["value"], "group": c["group"],
+         "label": c["label"] + ("" if c["available"] else " (not found)"),
+         "note": c["note"]}
+        for c in engines.choices(listed)]
 
 
 def engine_for(profile: dict | None = None) -> str:
-    """The engine this profile reads with: its own choice, else the program's
-    default, else whichever selectable engine is installed."""
+    """What this return reads with, as "engine:model": its own choice, else
+    the default, else the first engine and model that is installed."""
     from . import engines
+    from . import settings as user_settings
 
-    listed = [e for e in engines.describe() if e["selectable"]]
-    ready = [e["id"] for e in listed if e["available"]]
+    listed = engines.describe()
+    ready = [c["value"] for c in engines.choices(listed) if c["available"]]
+    known = {e["id"]: e for e in listed}
+
+    def usable(ref: str) -> bool:
+        base, _ = engines.split(ref)
+        return bool(ref) and base in known and known[base]["available"] and \
+            (engines.canonical(ref, listed) in ready or base in ("claude", "codex"))
+
     chosen = (((profile or active() or {}).get("settings") or {}).get("engine") or "")
-    if chosen and chosen in {e["id"] for e in listed}:
-        return chosen
-    default = paths.load_tabs().get("default_engine", "claude")
-    return default if default in ready or not ready else ready[0]
+    if usable(chosen):
+        return engines.canonical(chosen, listed)
+    default = user_settings.default_engine()
+    if usable(default):
+        return engines.canonical(default, listed)
+    return ready[0] if ready else engines.canonical(default, listed)
 
 
 def describe_fields() -> dict:

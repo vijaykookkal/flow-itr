@@ -33,27 +33,37 @@ Flow needs Python 3.10 or newer.
 
 ### 2. Install a reading engine and sign in
 
-Flow reads your documents with an AI assistant. It needs the assistant's
-**command-line tool (CLI)**, not the desktop app: Flow starts the `claude` or
-`codex` command itself, in the background. Having only the Claude or ChatGPT
-desktop app, or only the website, is not enough.
+Flow reads your documents with an AI assistant. You need **one** of these
+three:
 
-You need **one** of these, and a paid plan with its maker:
+| Engine | Costs | Your documents | Install |
+|---|---|---|---|
+| Claude Code CLI (recommended) | a Claude subscription | sent to Anthropic to be read | install it from [claude.com/claude-code](https://claude.com/claude-code), then run `claude` once in a terminal and sign in |
+| Codex CLI | a ChatGPT subscription | sent to OpenAI to be read | install it from [github.com/openai/codex](https://github.com/openai/codex), then run `codex` once in a terminal and sign in |
+| An open model through Ollama | free | **never leave your computer** | install [Ollama](https://ollama.com/download), then add a model on the **Reading engines** page inside Flow (see [Using an open model with Ollama](#using-an-open-model-with-ollama)) |
 
-| Engine | Needs | Install and sign in |
-|---|---|---|
-| Claude Code CLI (recommended) | a Claude subscription | install it from [claude.com/claude-code](https://claude.com/claude-code), then run `claude` once in a terminal and sign in |
-| Codex CLI | a ChatGPT subscription | install it from [github.com/openai/codex](https://github.com/openai/codex), then run `codex` once in a terminal and sign in |
+For Claude and Codex, Flow needs the **command-line tool (CLI)**, not the
+desktop app: Flow starts the `claude` or `codex` command itself, in the
+background. Having only the Claude or ChatGPT desktop app, or only the website,
+is not enough. To check it is installed, open a terminal (on Windows:
+PowerShell) and type `claude --version` or `codex --version`; if a version
+number is printed, Flow will find it. Flow uses the sign-in you did there and
+never asks for a password or a key.
 
-To check it is installed, open a terminal (on Windows: PowerShell) and type
-`claude --version` or `codex --version`. If a version number is printed, Flow
-will find it.
+Ollama needs no account and no graphics card; an ordinary laptop with 16 GB of
+memory can run it. It is slower than Claude or Codex and less accurate on messy
+statements, so it suits the smaller schedules best.
 
-Flow uses the sign-in you did there. It never asks for a password or a key.
+Each engine offers **models**, and the model is what actually reads: Claude
+Code offers Opus, Sonnet and Haiku; Codex offers its default and any model you
+add; Ollama offers every model you install. You choose the engine and model for
+each return under **Returns**, in **Reading engine**, and the default for all
+returns on the **Reading engines** page.
 
-Which model does the reading: with Claude, Flow always asks for Opus; the
-effort level is whatever your Claude Code is set to. With Codex, both the model
-and the effort are whatever your Codex is set to.
+Which model does the reading, and how long a reading may take, are set on the
+**Reading engines** page (settings menu, top right): Claude reads with Opus
+unless you choose Sonnet, Haiku or your Claude Code default; Codex uses its own
+default unless you name a model.
 
 ### 3. Download Flow
 
@@ -73,7 +83,7 @@ Flow. The window also tells you where your folders are:
 
 ```
   home      C:\Users\you\flow
-  documents C:\Users\you\flow\DEFAULT\input-docs
+  documents C:\Users\you\flow\DEFAULT\documents
   results   C:\Users\you\flow\DEFAULT\results
   engine claude   available
 ```
@@ -143,6 +153,49 @@ guide inside Flow, with a button on each step that takes you to the right place.
 
 ---
 
+## Using an open model with Ollama
+
+Ollama runs open AI models on your own computer. With it, your documents are
+read without ever leaving the machine, and no subscription is needed. No
+graphics card is required; a laptop with 16 GB of memory can do it, 32 GB is
+comfortable.
+
+1. Install Ollama from [ollama.com/download](https://ollama.com/download). It
+   starts by itself and runs quietly in the background.
+2. In Flow, open **Reading engines** from the settings menu (top right) and press
+   **Download** on a model. The recommended one for a laptop without a graphics
+   card is `gpt-oss:20b`. A large model takes a while on a home connection; you
+   can leave the page and it carries on. (From a terminal,
+   `ollama pull gpt-oss:20b` does the same.)
+
+   | Model | Download | Why |
+   |---|---|---|
+   | `gpt-oss:20b` (recommended) | about 13 GB | Only a small part of it works on each word, so it is quick on a laptop processor; reliable at filling in a fixed JSON shape; reads long documents (up to 128,000 tokens) |
+   | `qwen3:30b-a3b` | about 19 GB | Same quick design; very good with tables and figures; needs more memory |
+   | `qwen3:8b` | about 5 GB | For 16 GB machines; slower per word and less accurate |
+
+3. Every installed model appears by itself in **Returns › Reading engine**, as
+   "Ollama · gpt-oss:20b (on this computer)". Choose it and press Save. No
+   restart is needed; the Reading engines page also lets you remove a model you no longer
+   want.
+
+What to expect, honestly:
+
+- **Slower.** A laptop reads perhaps a few hundred words a second, so a large
+  schedule can take ten minutes or more. Leave it running.
+- **Less accurate on messy statements** than Claude or Codex. Everything Flow
+  checks still applies: each answer must fit the schedule exactly, and the
+  reconciliation with the AIS, TIS and Form 26AS shows what does not agree.
+- **A limit on how much it can read at once.** Flow gives the model 64,000
+  tokens by default (the Window setting on the Reading engines page); `gpt-oss:20b` can
+  take 131072 on a 32 GB machine. A schedule whose documents do not fit is
+  refused with its size, never read halfway. A year of bank statements for
+  Other sources or Books is usually too much for a laptop model; read those
+  schedules with Claude or Codex, or with fewer documents at a time.
+- **Scanned PDFs** (pictures, no text) cannot be read by a local model.
+- **Looking up exchange rates** needs Claude or Codex; with Ollama, type the
+  rate on the Capital gains page.
+
 ## Where your files are, and your privacy
 
 **Nothing personal is stored with the program.** Everything of yours lives in
@@ -154,14 +207,15 @@ flow/
   profiles.json            your returns and their settings
   fx_rates.json            exchange rates looked up for foreign income
   DEFAULT/
-    input-docs/            your documents go here
+    documents/            your documents go here
     results/               everything Flow produces, and results.xlsx
   .state/                  working files; safe to delete
 ```
 
 - **Flow itself sends nothing over the internet.** It runs only on your
   computer and cannot be reached from another one.
-- **The reading engine does.** To read a document, Claude Code or Codex sends
+- **With Ollama, nothing leaves at all**: the model runs on your computer.
+- **Otherwise, the reading engine does.** To read a document, Claude Code or Codex sends
   its contents to its maker (Anthropic or OpenAI), under the account you signed
   in with. That is the only place your documents go.
 - **Back it up** by copying the `flow` folder. To move to a new computer, copy
@@ -171,18 +225,23 @@ flow/
 
 ### More than one return
 
-A **return** is one person and one year, with its settings and folders. Add one under
+A **return** holds everything for one income-tax return: whose it is and for
+which year, its settings, its documents, and everything read and computed from
+them (your corrections and decisions, the computation, the reconciliation, the
+workbook). Each return keeps its own. Add one under
 **Returns** (at the top of the left panel) for a spouse, a parent, or
-another year. Each gets its own `input-docs` and `results` folders. Two returns
+another year. Each gets its own `documents` and `results` folders. Two returns
 can share one documents folder, for example to compare the old and new regimes.
 
 ### Keeping your files somewhere else
 
-- **A different folder for one return:** type a full path, such as
-  `D:\Tax\2025-26\papers`, as its documents or results folder. A path that is
-  not a full path is taken from the Flow home.
+- **A different folder for one return:** on the Returns page, under Folders,
+  press **Change location** and paste a full path such as `D:\Tax\2025-26`.
+  Nothing is moved: the return simply reads from (or writes to) that folder.
+  **Move…** instead carries the folder's contents to the new place. A path that
+  is not a full path is taken from the Flow home.
 - **Google Drive:** install Google Drive for desktop, then type a Drive path
-  such as `G:/My Drive/Flow/DEFAULT/input-docs`, or press "Put on Google Drive"
+  such as `G:/My Drive/Flow/DEFAULT/documents`, or press "Put on Google Drive"
   on the return when Flow finds your Drive. Your documents are then stored in
   your Google account. Let Drive finish syncing before opening the same return
   on another computer.
@@ -224,6 +283,7 @@ computation" and Flow keeps the workbook up to date by itself.
 | The page says it cannot reach the local agent | The black window was closed. Start Flow again. |
 | A schedule shows nothing after reading | Open **Documents** and check the file was sorted to that schedule; press "Sort documents again" after adding files. |
 | The AIS or TIS cannot be opened | Enter the PAN and date of birth under **Returns**. |
+| A reading or sorting is taking too long, or you started the wrong one | Press **Stop** beside it, or open the Activity menu (top right) and press Stop. Nothing from a stopped run is saved. Each request also has a time limit: 30 minutes for Claude and Codex, 120 for a local model, changeable on the Reading engines page. |
 | "The Excel workbook is out of date" | The workbook is open in Excel. Close it and press Export to Excel. |
 
 ---
@@ -287,13 +347,14 @@ python -m server.cli override --tab salary \
 ### Engines
 
 Each return chooses its engine under Returns. Left at "the
-default", it uses `default_engine` from `config/tabs.json`, or whichever engine is
+default", it uses the default engine set on the Reading engines page, or whichever engine is
 installed if that one is not.
 
 | Engine | Billing | Document reading | Reads confined to the tab's folders |
 |---|---|---|---|
 | `claude` | Claude subscription | Native, no shell | **Yes** — `--add-dir` is the whole world |
 | `codex` | ChatGPT subscription | Runs shell commands (`pdftotext`, Python) | **No** — `-s read-only` sandboxes writes, not reads |
+| `ollama:<model>` | none: runs locally | Flow sends the text it made of each document; the model opens nothing | **Yes**, the tightest: it sees only what is sent |
 | `mock` | none | Text fixtures only | Yes. Not offered in the UI; `--engine mock` for tests |
 
 An engine is anything implementing `run(Request, on_event) -> Reply` and

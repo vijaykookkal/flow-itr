@@ -926,7 +926,8 @@ function pageDocuments() {
           class: 'primary', disabled: busy || Boolean(running),
           title: running ? 'A schedule is being read; sorting waits until that finishes.' : '',
           onclick: () => runClassify(),
-        }, busy ? 'Sorting…' : 'Sort documents again'))),
+        }, busy ? 'Sorting…' : 'Sort documents again'),
+        busy ? stopButton('_classify', 'sorting') : null)),
     documentTabs('folder', docs.length),
     el('div', { class: 'meta-row' },
       el('span', {}, plural(docs.length, 'document')),
@@ -1156,6 +1157,9 @@ function reconWorkspace(tabs) {
       title: hasData ? '' : 'Read this schedule first; there is nothing to compare yet.',
       onclick: () => runReconcile(tab),
     }, run.running ? 'Comparing…' : r ? 'Compare again' : 'Compare now');
+    const buttons = run.running
+      ? el('span', { class: 'run-acts' }, button, stopButton(`${tab.id}:reconcile`, `comparing ${tabName(tab.id)}`))
+      : button;
 
     const about = r?.about || {};
     const against = (r?.against || []).length
@@ -1180,7 +1184,7 @@ function reconWorkspace(tabs) {
         ...reconChips(tab),
         el('span', { class: 'gh-end' },
           r ? el('small', {}, `compared ${fmtWhen(r.generated_at)}`) : null,
-          button)),
+          buttons)),
       r && against ? el('div', { class: 'card-foot', style: 'border-top:0;border-bottom:1px solid var(--line)' },
         `Set against ${against}.`) : null,
       run.log.length ? el('div', { class: 'log', id: `log-${tab.id}:reconcile`, style: 'margin:12px 18px' },
@@ -1623,7 +1627,7 @@ function profileCard() {
   const pan = p.pan ? `${p.pan.slice(0, 3)}\u2022\u2022\u2022\u2022${p.pan.slice(-3)}` : '';
   const docs = allDocuments().length;
   const x = state.export;
-  const engine = (state.engines || []).find((e) => e.id === engineId());
+  const engineName = engineLabel(engineId());
   const fact = (k, v, cls = '') => (v ? el('div', { class: 'fact-row' },
     el('dt', {}, k), el('dd', { class: cls, title: cls ? String(v) : null }, v)) : null);
   const group = (title, ...rows) => el('div', { class: 'fact-group' },
@@ -1641,7 +1645,7 @@ function profileCard() {
         fact('Age', chosen('age_band')),
         fact('Tax audit', chosen('audit_44ab')),
         fact('Date of birth', settings.dob || el('a', { href: '#_profiles' }, 'not entered')),
-        fact('Reading engine', engine ? `${engine.label}${engine.available ? '' : ' (not found)'}` : 'none found')),
+        fact('Reading engine', engineName)),
       group('Where its files are',
         fact('Documents', p.source_path, 'path'),
         fact('', `${plural(docs, 'document')} in it`),
@@ -2119,7 +2123,7 @@ function guideSteps() {
 
   const steps = [
     { id: 'profile', icon: 'user', title: 'Set up your return',
-      lead: 'A return is one person and one financial year, with its own settings and folders. Flow starts you with one called DEFAULT.',
+      lead: 'A return holds everything for one income-tax return: whose it is, the year, how the tax is worked out, its documents, and all that is read and computed from them. Flow starts you with one called DEFAULT.',
       does: [
         ['Open ', ui('Returns'), ' at the top of the left panel.'],
         ['Fill in the ', ui('name'), ', ', ui('financial year'), ', ', ui('PAN'), ' and ', ui('date of birth'),
@@ -2279,7 +2283,7 @@ function pageHome() {
     el('div', { class: 'home-flow' },
       box('1', 'documents', 'You add documents', 'Everything for the year in one folder. No sorting or renaming.'),
       arrow(),
-      box('2', 'doc', 'The AI engine reads', 'Claude Code or Codex copies the facts out of each document.', 'ai'),
+      box('2', 'doc', 'The AI engine reads', 'Claude Code, Codex, or an open model through Ollama, copies the facts out of each document.', 'ai'),
       arrow(),
       box('3', 'calc', 'Flow computes and checks', 'The tax rules, applied by Flow itself, then reconciled with the AIS, TIS and 26AS.'),
       arrow(),
@@ -2305,7 +2309,8 @@ function pageHome() {
       el('b', {}, found.length ? 'Reading engine ready' : 'Before you begin: install a reading engine'),
       el('span', {}, found.length
         ? ` ${found.map((e) => e.label).join(' and ')} found on this computer.`
-        : ' Flow reads documents with the Claude Code or Codex command-line tool, installed and signed in. '
+        : ' Flow reads documents with the Claude Code or Codex command-line tool, installed and signed in, '
+          + 'or with an open model on this computer through Ollama (no GPU needed). '
           + 'The desktop app or the website is not enough. Install one, sign in, and start Flow again.')));
 
   const start = el('section', { class: 'home-section', id: 'getting-started' },

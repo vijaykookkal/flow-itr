@@ -7,7 +7,7 @@ machine's token all live in one folder outside it -- the *Flow home*:
     <home>/
       profiles.json                 who files what, and where their folders are
       fx_rates.json                 SBI TT rates looked up or typed in
-      <profile>/input-docs/         the documents for that return
+      <profile>/documents/         the documents for that return
       <profile>/results/            what was read from them, your corrections and
                                     decisions, the computation, the Excel workbook
       .state/                       this machine's working files: token, log,
@@ -51,7 +51,7 @@ HOME_ENV = "FLOW_HOME"
 HOME_POINTER = ROOT / "flow.local.json"
 HOME_FOLDER = "flow"
 
-INPUT_FOLDER = "input-docs"
+INPUT_FOLDER = "documents"
 OUTPUT_FOLDER = "results"
 
 AY_RE = re.compile(r"^\d{4}-\d{2}$")
@@ -132,7 +132,7 @@ def folder_name(name: str) -> str:
 
 
 def default_dirs(name: str) -> tuple[str, str]:
-    """The convention: <home>/<profile>/input-docs and .../results."""
+    """The convention: <home>/<profile>/documents and .../results."""
     folder = folder_name(name)
     return f"{folder}/{INPUT_FOLDER}", f"{folder}/{OUTPUT_FOLDER}"
 

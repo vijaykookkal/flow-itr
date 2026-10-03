@@ -251,7 +251,7 @@ def _extract_json(text: str):
 
 
 def run(ay: str, tab_id: str, engine_name: str = "mock", force: bool = False,
-        on_event=None) -> dict:
+        on_event=None, cancel=None) -> dict:
     on_event = on_event or (lambda e: None)
     tab = paths.tab(tab_id)
     schedule = tab["id"]
@@ -321,7 +321,12 @@ def run(ay: str, tab_id: str, engine_name: str = "mock", force: bool = False,
     engine = engines.get(engine_name)
     add_dirs = sources.scan_dirs(ay, tab_id) + derived_dirs + [skills_dir()]
 
+    stopped = False
+    limit = engines.time_limit_for(engine_name)
     for attempt in range(1, MAX_REPAIRS + 2):
+        if cancel is not None and cancel.is_set():
+            stopped = True
+            break
         on_event({"phase": "ask", "detail": f"attempt {attempt} via {engine_name}"})
         try:
             # One call shape for every engine. Which engine ran changes nothing
@@ -337,11 +342,20 @@ def run(ay: str, tab_id: str, engine_name: str = "mock", force: bool = False,
                     attempt=attempt,
                     session_id=session_id,
                     repair_prompt=_repair_prompt(errors) if errors else None,
+                    cancel=cancel,
+                    time_limit=limit,
                 ),
                 on_event,
             )
             session_id = reply.session_id or session_id
             candidate = _extract_json(reply.text)
+        except engines.Stopped as exc:
+            # Ended on purpose. Nothing is retried and nothing is written.
+            stopped = True
+            errors = [("", str(exc))]
+            attempts.append({"attempt": attempt, "outcome": "stopped", "errors": str(exc)})
+            on_event({"phase": "stopped", "detail": str(exc)[:400]})
+            break
         except EngineError as exc:
             # The engine cannot do this job. Retrying produces the same error
             # three times over and buries the real message, so stop here.
@@ -386,7 +400,7 @@ def run(ay: str, tab_id: str, engine_name: str = "mock", force: bool = False,
         "attempts": attempts,
         "started_at": run_id.split("-")[0],
         "finished_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "result": "ok" if document else "failed",
+        "result": "ok" if document else "stopped" if stopped else "failed",
     }
     paths.write_json(paths.run_manifest(ay, run_id), manifest)
 
@@ -488,6 +502,9 @@ def run(ay: str, tab_id: str, engine_name: str = "mock", force: bool = False,
             document = None
 
     if document is None:
+        if stopped:
+            return {"status": "stopped", "run_id": run_id, "errors": jsl.format_errors(errors),
+                    "manifest": manifest}
         on_event({"phase": "failed", "detail": f"gave up after {len(attempts)} attempt(s)"})
         return {"status": "failed", "run_id": run_id, "errors": jsl.format_errors(errors),
                 "manifest": manifest}

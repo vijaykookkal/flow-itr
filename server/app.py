@@ -21,6 +21,7 @@ from . import fxlookup
 from . import reconcile as reconciler
 from . import classify, excerpt, merge, notes, paths, profiles, runner, sources
 from . import engines as engine_registry
+from . import settings as user_settings
 
 def _token() -> str:
     """Stable across restarts.
@@ -118,6 +119,36 @@ class Activity:
 
 
 ACTIVITY = Activity()
+
+
+class Stops:
+    """A stop switch for each piece of work in progress, keyed the way the
+    page names it: a schedule id for a reading, "<id>:reconcile" for a
+    comparison, "_classify" for sorting, "_fx" for a rate lookup."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._events: dict[str, threading.Event] = {}
+
+    def begin(self, key: str) -> threading.Event:
+        with self._lock:
+            self._events[key] = threading.Event()
+            return self._events[key]
+
+    def end(self, key: str) -> None:
+        with self._lock:
+            self._events.pop(key, None)
+
+    def stop(self, key: str | None = None) -> list[str]:
+        """Press the switch for one piece of work, or for all of it."""
+        with self._lock:
+            keys = list(self._events) if key is None else [k for k in (key,) if k in self._events]
+            for k in keys:
+                self._events[k].set()
+            return keys
+
+
+STOPS = Stops()
 
 
 def page_version() -> str:
@@ -338,14 +369,53 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/api/compute":
                 body = self._body()
                 return self._json(compute_summary(body.get("ay") or self._ay()))
+            if url.path == "/api/settings":
+                # The Reading engines page: model, time limit, window and the
+                # default engine, kept in the Flow home rather than the program.
+                try:
+                    user_settings.save(self._body().get("patch") or {})
+                except (ValueError, TypeError) as exc:
+                    return self._json({"error": str(exc)}, 400)
+                from .engines import ollama_local
+                ollama_local._MODELS["at"] = 0.0    # a new host is asked at once
+                return self._json(user_settings.describe())
+            if url.path == "/api/stop":
+                # The Stop button: one piece of work by its key, or everything.
+                body = self._body()
+                stopped = STOPS.stop(None if body.get("all") else body.get("key", ""))
+                return self._json({"stopped": stopped})
+            if url.path == "/api/models":
+                # Downloading and removing local models, through Ollama's own
+                # API on this machine.
+                from . import local_models
+                body = self._body()
+                try:
+                    if body.get("action") == "pull":
+                        local_models.pull(body.get("name", ""))
+                    elif body.get("action") == "remove":
+                        local_models.remove(body.get("name", ""))
+                    else:
+                        return self._json({"error": "unknown action"}, 400)
+                except ValueError as exc:
+                    return self._json({"error": str(exc)}, 400)
+                except OSError as exc:
+                    return self._json({"error": f"Ollama could not be reached: {exc}"}, 502)
+                return self._json(local_models.status())
             if url.path == "/api/open-folder":
-                # Opens the active return's documents folder in the file
-                # manager, so a download can be dropped straight into it. No
-                # path is taken from the request: only that one folder opens.
+                # Opens one of a return's two folders in the file manager, so
+                # a download can be dropped straight into it. No path is taken
+                # from the request: only a return's own folders can open.
                 import os
                 import subprocess
                 import sys
-                folder = paths.source_root(self._ay())
+                body = self._body()
+                # A named return must exist; only a request naming none means
+                # the return in use.
+                profile = (profiles.get(body["id"]) if body.get("id") else profiles.active()) or {}
+                key = "data_dir" if body.get("which") == "data" else "source_dir"
+                if not profile.get(key):
+                    return self._json({"error": "no such return"}, 404)
+                folder = paths.resolve_dir(profile[key])
                 folder.mkdir(parents=True, exist_ok=True)
                 if sys.platform.startswith("win"):
                     os.startfile(str(folder))  # noqa: S606
@@ -499,9 +569,13 @@ class Handler(BaseHTTPRequestHandler):
                 "profile_fields": profiles.describe_fields(),
                 "fy": (profiles.active() or {}).get("fy", ""),
                 "engines": engine_registry.describe(),
+                # Every engine and model a return may read with, grouped.
+                "engine_choices": engine_registry.choices(),
                 "activity": ACTIVITY.snapshot(),
                 "page_version": page_version(),
-                "default_engine": config.get("default_engine", "claude"),
+                "version": (paths.ROOT / "VERSION").read_text("utf-8").strip()
+                           if (paths.ROOT / "VERSION").exists() else "",
+                "default_engine": user_settings.default_engine(),
                 # The engine the active profile reads with, after its own
                 # choice and what is installed have been taken into account.
                 "engine": profiles.engine_for(),
@@ -517,6 +591,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(jsl.compose(tab_id))
             except FileNotFoundError:
                 return self._json({"error": f"no schema for {tab_id}"}, 404)
+
+        if url.path == "/api/settings":
+            return self._json(user_settings.describe())
+
+        if url.path == "/api/models":
+            from . import local_models
+            return self._json(local_models.status())
+
+        if url.path == "/api/doc":
+            # The user guide, the release notes and the licence, as text the
+            # page renders. Only these three files can be asked for.
+            name = (q.get("name") or [""])[0]
+            files = {"guide": "README.md", "changes": "CHANGELOG.md", "licence": "LICENSE"}
+            if name not in files:
+                return self._json({"error": "no such document"}, 404)
+            target = paths.ROOT / files[name]
+            return self._json({"name": name, "text": target.read_text("utf-8") if target.exists() else ""})
 
         if url.path == "/api/excerpt":
             # The printed line behind a figure, from the same text the engine
@@ -546,7 +637,7 @@ class Handler(BaseHTTPRequestHandler):
                 "tab": tab_id,
                 "files": [{k: f[k] for k in ("path", "sha256", "bytes")} for f in files],
                 "fingerprint": sources.fingerprint(files, runner.prompt_version(tab_id),
-                                                   paths.load_tabs().get("default_engine", "claude")),
+                                                   user_settings.default_engine()),
             })
 
         return self._json({"error": "not found"}, 404)
@@ -558,12 +649,14 @@ class Handler(BaseHTTPRequestHandler):
         refused = ACTIVITY.start_run(body.get("tab", ""))
         if refused:
             return self._json({"error": refused}, 409)
+        cancel = STOPS.begin(body.get("tab", ""))
         try:
-            self._run_claimed(body, ay)
+            self._run_claimed(body, ay, cancel)
         finally:
+            STOPS.end(body.get("tab", ""))
             ACTIVITY.end_run(body.get("tab", ""))
 
-    def _run_claimed(self, body: dict, ay: str):
+    def _run_claimed(self, body: dict, ay: str, cancel=None):
 
         self.send_response(200)
         self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
@@ -586,6 +679,7 @@ class Handler(BaseHTTPRequestHandler):
                 engine_name=body.get("engine", "mock"),
                 force=bool(body.get("force")),
                 on_event=emit,
+                cancel=cancel,
             )
             # Derived tabs depend on extracted ones, so a successful run
             # invalidates the summary. Recompute rather than let it go stale.
@@ -595,9 +689,9 @@ class Handler(BaseHTTPRequestHandler):
                 # Look it up now, as part of the same run, rather than leave
                 # the disposal out of every total until someone notices.
                 needs = _rates_needed(summary)
-                if needs:
+                if needs and not (cancel is not None and cancel.is_set()):
                     try:
-                        fxlookup.run(needs, body.get("engine", "claude"), emit)
+                        fxlookup.run(needs, body.get("engine", "claude"), emit, cancel=cancel)
                         compute_summary(ay)
                     except Exception as exc:  # noqa: BLE001 - the extraction itself succeeded
                         emit({"phase": "note",
@@ -616,6 +710,7 @@ class Handler(BaseHTTPRequestHandler):
         refused = ACTIVITY.start_run(f"{tab_id}:reconcile")
         if refused:
             return self._json({"error": refused}, 409)
+        cancel = STOPS.begin(f"{tab_id}:reconcile")
         self.send_response(200)
         self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
@@ -632,12 +727,17 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             document = reconciler.run(ay, tab_id, body.get("engine")
-                                      or paths.load_tabs().get("default_engine", "claude"), emit)
+                                      or user_settings.default_engine(), emit,
+                                      cancel=cancel)
             emit({"phase": "done", "result": {"status": "ok", "counts": document["counts"],
                                               "lines": len(document["lines"])}})
+        except engine_registry.Stopped as exc:
+            emit({"phase": "stopped", "detail": str(exc)})
+            emit({"phase": "done", "result": {"status": "stopped", "errors": str(exc)}})
         except Exception as exc:  # noqa: BLE001
             emit({"phase": "error", "detail": f"{type(exc).__name__}: {exc}"})
         finally:
+            STOPS.end(f"{tab_id}:reconcile")
             ACTIVITY.end_run(f"{tab_id}:reconcile")
 
     def _fx_lookup(self):
@@ -675,12 +775,14 @@ class Handler(BaseHTTPRequestHandler):
         refused = ACTIVITY.start_classify()
         if refused:
             return self._json({"error": refused}, 409)
+        cancel = STOPS.begin("_classify")
         try:
-            self._classify_claimed(body, ay)
+            self._classify_claimed(body, ay, cancel)
         finally:
+            STOPS.end("_classify")
             ACTIVITY.end_classify()
 
-    def _classify_claimed(self, body: dict, ay: str):
+    def _classify_claimed(self, body: dict, ay: str, cancel=None):
         self.send_response(200)
         self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
@@ -697,9 +799,12 @@ class Handler(BaseHTTPRequestHandler):
                     pass
 
         try:
-            result = classify.run(ay, engine_name=body.get("engine") or paths.load_tabs().get("default_engine", "claude"),
-                                  on_event=emit)
+            result = classify.run(ay, engine_name=body.get("engine") or user_settings.default_engine(),
+                                  on_event=emit, cancel=cancel)
             emit({"phase": "done", "result": {"status": "ok", "documents": len(result["documents"])}})
+        except engine_registry.Stopped as exc:
+            emit({"phase": "stopped", "detail": str(exc)})
+            emit({"phase": "done", "result": {"status": "stopped", "errors": str(exc)}})
         except Exception as exc:  # noqa: BLE001
             emit({"phase": "error", "detail": f"{type(exc).__name__}: {exc}"})
 
@@ -769,12 +874,16 @@ def serve(open_browser: bool = True):
         print(f"  results   {profile['data_path']}")
     found = False
     for e in engine_registry.describe():
-        mark = "available" if e["available"] else "NOT FOUND"
-        found = found or (e["available"] and e["id"] != "mock")
-        print(f"  engine {e['id']:<8} {mark}")
+        if not e["selectable"]:
+            continue
+        mark = (f"available, {len(e['models'])} model(s)" if e["id"] == "ollama" else "available") \
+            if e["available"] else "NOT FOUND"
+        found = found or e["available"]
+        print(f"  engine {e['label']:<12} {mark}")
     if not found:
         print("  No reading engine was found. Install the Claude Code or Codex command-line tool "
-              "and sign in;\n  until then documents cannot be read, though everything else works.")
+              "and sign in,\n  or Ollama (free, from ollama.com) and add a model under Reading engines. "
+              "Until then\n  documents cannot be read, though everything else works.")
     print("Ctrl-C to stop.")
     if open_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()

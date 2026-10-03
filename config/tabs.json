@@ -1,6 +1,19 @@
 {
   "ay_default": "2026-27",
   "default_engine": "claude",
+  "ollama": {
+    "_note": "Used when a return's reading engine is Ollama. host: where Ollama listens. model: leave blank to pick the first installed of gpt-oss:20b, qwen3:30b-a3b, qwen3:14b, qwen3:8b. num_ctx: how many tokens of documents and instructions the model is given; more needs more memory. 65536 suits a 32 GB laptop; gpt-oss:20b can go to 131072 there. think: false keeps answers fast; gpt-oss always reasons a little.",
+    "host": "http://127.0.0.1:11434",
+    "model": "",
+    "num_ctx": 65536,
+    "think": false
+  },
+  "time_limits_minutes": {
+    "_note": "How long one request to a reading engine may take before Flow ends it. A local model on a laptop processor is slow, so it gets longer. Stopping by hand is always possible from the page.",
+    "claude": 30,
+    "codex": 30,
+    "ollama": 120
+  },
   "_note": "A tab owns a list of `sources`, each a directory (scanned recursively) or a glob, relative to the active profile's documents folder. Prefix with an alias from `roots` to keep long export paths in one place. Globs matter because an export folder rarely lines up with an ITR schedule: one folder here holds capital gains, dividends and bank statements, which belong to three different schedules.",
   "tabs": [
     {

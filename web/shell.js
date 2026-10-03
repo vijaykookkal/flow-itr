@@ -80,7 +80,7 @@ const NAMES = {
   summary: 'Computation', filed_return: 'Filed return',
 };
 
-const ROUTES = { home: 'Home', overview: 'Summary', documents: 'Documents', schedules: 'Schedules', review: 'Review',
+const ROUTES = { home: 'Home', engines: 'Reading engines', about: 'Help and about', overview: 'Summary', documents: 'Documents', schedules: 'Schedules', review: 'Review',
                  reconcile: 'Reconcile', handoff: 'Hand-off', help: 'Getting started',
                  _profiles: 'Returns' };
 
@@ -161,6 +161,7 @@ function filedDiffers(cmp) {
 function scheduleState(tab) {
   if (isRunning(tab.id)) return { g: 'run', text: 'Being read now' };
   if (runOf(tab.id).lastRun?.status === 'failed') return { g: 'fail', text: 'The last reading failed' };
+  if (runOf(tab.id).lastRun?.status === 'stopped' && !tab.document) return { g: 'wait', text: 'Stopped before it finished' };
   if (!tab.implemented) return { g: 'empty', text: 'Not built yet' };
   const open = openDecisions(tab.id).length;
   if (tab.kind === 'derive') {
@@ -251,7 +252,8 @@ function renderRail() {
     el('div', { class: 'nav-foot' },
       el('b', {}, 'A draft for review, not a filing'),
       'Nothing here submits anything. ',
-      el('a', { href: '#home/start' }, 'Getting started')));
+      el('a', { href: '#home/start' }, 'Getting started'), ' · ',
+      el('a', { href: '#about' }, 'Help')));
   rail.replaceChildren(...nodes.filter(Boolean));
 }
 
@@ -294,6 +296,21 @@ function freshness() {
  *  resolved by the server against what is actually installed. */
 const engineId = () => state.engine || state.defaultEngine || '';
 
+/** "claude" stands for Claude Code's default model, "claude:opus" for one
+ *  model: the same reader, written the full way, so the two compare equal. */
+function canonicalEngine(ref) {
+  if (!ref || ref.includes(':')) return ref || '';
+  const e = (state.engines || []).find((x) => x.id === ref);
+  return e && e.default_model ? `${ref}:${e.default_model}` : ref;
+}
+
+/** "Claude Code · Opus" for "claude:opus". */
+function engineLabel(ref) {
+  const full = canonicalEngine(ref);
+  const c = (state.engineChoices || []).find((x) => x.value === full);
+  return c ? `${c.group} · ${c.label}` : (full || 'none found');
+}
+
 function renderHeader() {
   const store = state.profiles || { profiles: [], active: null };
   const sel = $('#profile');
@@ -319,16 +336,19 @@ function renderActivity() {
     blocks.push(el('div', { class: 'act' },
       el('div', { class: 'act-t' },
         glyph(routingBusy() ? 'run' : 'ok', ''), 'Sorting documents',
+        routingBusy() ? stopButton('_classify', 'sorting') : null,
         el('a', { href: '#documents' }, 'Documents')),
       el('div', { class: 'log' }, logLines(state.classifyLog.slice(-6)))));
   }
   for (const [key, run] of Object.entries(state.runs)) {
     if (!run.log.length && !run.running) continue;
     const [tabId, kind] = key.split(':');
+    const what = `${kind ? 'Comparing' : tabOf(tabId)?.kind === 'derive' ? 'Recomputing' : 'Reading'} ${tabName(tabId)}`;
     blocks.push(el('div', { class: 'act' },
       el('div', { class: 'act-t' },
         glyph(run.running ? 'run' : run.lastRun?.status === 'failed' ? 'fail' : 'ok', ''),
-        `${kind ? 'Comparing' : tabOf(tabId)?.kind === 'derive' ? 'Recomputing' : 'Reading'} ${tabName(tabId)}`,
+        what,
+        run.running && tabOf(tabId)?.kind !== 'derive' ? stopButton(key, what.toLowerCase()) : null,
         el('a', { href: `#${tabId}${kind ? '/reconciliation' : ''}` }, 'Open')),
       el('div', { class: 'log' }, logLines(run.log.slice(-5)))));
   }
@@ -337,12 +357,17 @@ function renderActivity() {
     const [tabId] = id.split(':');
     blocks.push(el('div', { class: 'act' },
       el('div', { class: 'act-t' }, glyph('run', ''), `${tabName(tabId)} is being worked on`,
+         stopButton(id, tabName(tabId)),
          el('a', { href: `#${tabId}` }, 'Open')),
       el('div', { class: 'muted', style: 'font-size:12.5px;margin-top:4px' },
          'Started before this page was opened; it will show here when it finishes.')));
   }
+  const anything = state.activity.running.length || state.activity.classifying
+    || Object.values(state.runs).some((r) => r.running) || routingBusy();
   host.replaceChildren(
-    el('div', { class: 'menu-cap' }, 'Activity'),
+    el('div', { class: 'menu-cap act-cap' }, 'Activity',
+      anything ? el('button', { class: 'ghost small stop-btn', type: 'button',
+        onclick: (e) => { e.currentTarget.disabled = true; stopWork(null); } }, icon('close'), 'Stop everything') : null),
     ...(blocks.length ? blocks : [el('div', { class: 'menu-empty' },
       'Nothing is running, and nothing has run since this page was opened.')]));
 }
@@ -396,6 +421,7 @@ function applyRoute() {
   const { id, sub } = parseHash();
   // Getting started is a section of Home now; an old link still lands on it.
   if (id === 'help') { history.replaceState(null, '', '#home/start'); return applyRoute(); }
+  if (id === 'models') { history.replaceState(null, '', '#engines'); return applyRoute(); }
   const next = isRoute(id) ? id : 'home';
   const changed = next !== state.current;
   state.current = next;
@@ -451,6 +477,8 @@ function renderPanel() {
   let nodes;
   try {
     if (id === 'home') nodes = pageHome();
+    else if (id === 'engines') nodes = pageEngines();
+    else if (id === 'about') nodes = pageAbout();
     else if (id === 'overview') nodes = pageOverview();
     else if (id === 'documents') nodes = pageDocuments();
     else if (id === 'schedules') nodes = pageSchedules();
@@ -500,7 +528,7 @@ function runAction(tab, d) {
     : routingBusy() ? 'Waiting for sorting…'
     : derive ? 'Recompute'
     : d && !d.nothing_supplied ? 'Read again' : 'Read documents';
-  return el('button', {
+  const button = el('button', {
     class: d && !d.nothing_supplied && !derive ? 'ghost' : 'primary',
     disabled: running || routingBusy() || (!derive && !tab.source_count),
     title: routingBusy() ? 'Documents are being sorted; reading waits until that finishes.'
@@ -509,12 +537,19 @@ function runAction(tab, d) {
       : 'Read this schedule’s documents with the engine chosen in Settings.',
     onclick: () => runTab(tab),
   }, derive ? null : icon('refresh'), label);
+  // While a reading runs, Stop sits beside it.
+  return running && !derive ? el('span', { class: 'run-acts' }, button, stopButton(tab.id, `reading ${tabName(tab.id)}`)) : button;
 }
 
 function runStripKids(tab) {
   const run = runOf(tab.id);
   const out = [];
   const failed = run.lastRun && run.lastRun.status === 'failed';
+  if (run.lastRun?.status === 'stopped') {
+    out.push(el('div', { class: 'callout' }, icon('info'),
+      el('div', {}, el('b', {}, 'This reading was stopped'),
+        run.lastRun.errors || 'Nothing from it was saved.')));
+  }
   if (failed) {
     // A failed reading must never be mistaken for a quiet success.
     out.push(el('div', { class: 'callout err' }, icon('warn'),
@@ -989,6 +1024,8 @@ function paletteIndex() {
   const out = [];
   for (const area of AREAS) out.push({ type: 'Go to', label: area.label, hint: 'Area', go: () => select(area.id) });
   out.push({ type: 'Go to', label: 'Getting started', hint: 'Help', go: () => select('home', 'start') });
+  out.push({ type: 'Go to', label: 'Help and about', hint: 'User guide', go: () => select('about') });
+  out.push({ type: 'Go to', label: 'Reading engines', hint: 'Claude, Codex, Ollama', go: () => select('engines') });
   out.push({ type: 'Go to', label: 'Returns', hint: 'Settings', go: () => select('_profiles') });
   if (computedRegime()?.filed_comparison) {
     out.push({ type: 'Go to', label: 'Computation against the filed return', hint: 'Side by side, line for line',
@@ -1106,6 +1143,25 @@ function closePalette() {
 
 /* ------------------------------------------------------------------ actions */
 
+/** Ends a reading, a comparison or the sorting that is under way. The
+ *  engine is stopped where it is and nothing from that run is saved. */
+async function stopWork(key, label) {
+  try {
+    const out = await api('/api/stop', { method: 'POST', body: JSON.stringify(key ? { key } : { all: true }) })
+      .then((r) => r.json());
+    if (!out.stopped.length) toast('Nothing was running to stop.');
+    else toast(`Stopping ${label || 'everything'}. Nothing from ${out.stopped.length > 1 ? 'those runs' : 'that run'} is saved.`);
+  } catch (err) {
+    toast(`Could not stop: ${err.message}`, 'err');
+  }
+}
+
+/** The Stop button that sits beside a run's busy button. */
+const stopButton = (key, label) => el('button', {
+  class: 'ghost small stop-btn', type: 'button', title: `Stop ${label} now. Nothing from it is saved.`,
+  onclick: (e) => { e.currentTarget.disabled = true; stopWork(key, label); },
+}, icon('close'), 'Stop');
+
 async function runClassify() {
   if (state.classifying) return;
   state.classifying = true;
@@ -1128,7 +1184,11 @@ async function runClassify() {
       buffer = lines.pop();
       for (const line of lines) {
         if (!line.trim()) continue;
-        state.classifyLog.push(JSON.parse(line));
+        const evt = JSON.parse(line);
+        state.classifyLog.push(evt);
+        if (evt.phase === 'done' && evt.result?.status === 'stopped') {
+          toast('Sorting stopped. The documents keep the sorting they had before.');
+        }
         const box = document.getElementById('log-classify');
         if (box) {
           box.replaceChildren(...logLines(state.classifyLog));
@@ -1175,6 +1235,7 @@ async function refresh() {
   state.fy = data.fy;
   state.activity = data.activity || { running: [], classifying: false };
   state.handoff = data.handoff || { sheets: [], entered: {} };
+  state.version = data.version || '';
   state.sources = data.document_sources || { groups: [], sources: [] };
   state.home = data.home || { path: '', source: '', cloud: [] };
   state.export = data.export || null;
@@ -1182,6 +1243,7 @@ async function refresh() {
   state.choices = data.decision_choices || {};
   state.documentMap = data.document_map || null;
   state.engines = data.engines || [];
+  state.engineChoices = data.engine_choices || [];
   state.defaultEngine = data.default_engine;
   state.engine = data.engine || data.default_engine;
   state.cache = {};

@@ -27,10 +27,29 @@ from . import EngineError, Reply, Request
 LIMIT_RE = re.compile(r"(usage|session|rate|weekly|daily) limit|limit reached|"
                       r"resets (at )?\d|out of (extra )?usage", re.I)
 
-LABEL = "claude"
+LABEL = "Claude Code"
 NOTE = "Claude subscription. Reads documents natively with no shell; reads are confined to the tab's folders."
 SELECTABLE = True
 CONFINES_READS = True
+
+# The models Claude Code reads with, by the names its --model flag takes.
+# "default" means no flag: whatever the person's Claude Code is set to.
+MODELS = [
+    {"id": "opus", "label": "Opus", "note": "The most careful reader. Uses your plan's allowance fastest."},
+    {"id": "sonnet", "label": "Sonnet", "note": "Faster and lighter on your allowance; very good on clean documents."},
+    {"id": "haiku", "label": "Haiku", "note": "Fastest and lightest. Best kept for sorting documents."},
+    {"id": "default", "label": "Claude Code's own default", "note": "Whatever model your Claude Code is set to."},
+]
+
+
+def model_list() -> list[dict]:
+    return [dict(m) for m in MODELS]
+
+
+def default_model() -> str:
+    """The model meant when a return names just "claude"."""
+    from server import settings
+    return settings.get("claude", "model", default="opus") or "opus"
 
 READ_ONLY_TOOLS = ["Read", "Glob", "Grep"]
 DENIED_TOOLS = ["Write", "Edit", "NotebookEdit", "Bash", "WebFetch", "WebSearch", "Task"]
@@ -59,7 +78,10 @@ def available() -> bool:
     return find_binary() is not None
 
 
-def run(req: Request, on_event, model: str = "opus", timeout: int = 1800) -> Reply:
+def run(req: Request, on_event, model: str | None = None, timeout: int = 1800) -> Reply:
+    model = model or default_model()
+    if model == "default":
+        model = ""                      # no --model: Claude Code's own default
     add_dirs = [Path(d) for d in req.add_dirs]
     cwd = req.cwd
     binary = find_binary()
@@ -84,8 +106,10 @@ def run(req: Request, on_event, model: str = "opus", timeout: int = 1800) -> Rep
         "--disallowed-tools", *DENIED_TOOLS,
         "--permission-mode", "dontAsk",
         "--add-dir", *[str(d) for d in add_dirs],
-        "--model", model,
     ]
+    # No model named means Claude Code's own default, as set on the page.
+    if model:
+        cmd += ["--model", model]
     if req.is_repair:
         cmd += ["--resume", req.session_id]
 
@@ -121,6 +145,8 @@ def _stream(cmd, cwd, req: Request, on_event, model, timeout, binary) -> Reply:
 
     result_text = ""
     session_id = None
+    from . import Watch
+    watch = Watch(req, proc.kill, timeout)
     for line in proc.stdout:  # type: ignore[union-attr]
         line = line.strip()
         if not line:
@@ -147,8 +173,10 @@ def _stream(cmd, cwd, req: Request, on_event, model, timeout, binary) -> Reply:
             if evt.get("subtype") != "success":
                 on_event({"phase": "error", "detail": str(evt.get("subtype"))})
 
+    watch.finish()
+    watch.raise_if_ended()
     stderr = proc.stderr.read() if proc.stderr else ""
-    proc.wait(timeout=timeout)
+    proc.wait(timeout=60)
 
     if proc.returncode != 0 and not result_text:
         raise EngineError(f"claude exited {proc.returncode}: {stderr[:800].strip()}")
@@ -159,4 +187,4 @@ def _stream(cmd, cwd, req: Request, on_event, model, timeout, binary) -> Reply:
     if LIMIT_RE.search(result_text[:400]) and "{" not in result_text:
         raise EngineError(f"claude: {result_text.strip()[:300]}")
 
-    return Reply(text=result_text, session_id=session_id, model=model)
+    return Reply(text=result_text, session_id=session_id, model=model or "claude-default")
