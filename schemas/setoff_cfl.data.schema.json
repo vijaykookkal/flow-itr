@@ -1,0 +1,58 @@
+{
+  "title": "ITR-3 Schedules CYLA, BFLA, CFL and UD (Set-off and carry forward) - data",
+  "description": "The opening position only: losses and unabsorbed depreciation carried into this year from earlier years. Schedules CYLA, BFLA, CFL and UD are computed from this and from this year's income.",
+  "type": "object",
+  "required": [
+    "brought_forward"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "brought_forward": {
+      "type": "array",
+      "description": "Losses carried into this year from earlier returns. The assessment year of origin decides when they expire.",
+      "items": {
+        "type": "object",
+        "required": [
+          "ay_of_origin",
+          "kind",
+          "amount"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ay_of_origin": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}$"
+          },
+          "kind": {
+            "enum": [
+              "house_property",
+              "business_non_speculative",
+              "business_speculative",
+              "specified_business_35AD",
+              "short_term_capital",
+              "long_term_capital",
+              "other_sources_race_horses",
+              "unabsorbed_depreciation"
+            ]
+          },
+          "amount": {
+            "$ref": "#/$defs/money"
+          },
+          "source_return_ack": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "return_filed_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date the return for the year of the loss was filed, as the document prints it. Schedule CFL has a column for it, and a loss other than a house-property loss survives only if that return was filed in time."
+          }
+        }
+      }
+    }
+  }
+}

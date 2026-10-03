@@ -1,0 +1,163 @@
+{
+  "title": "ITR-3 Schedule CG (Capital Gains) - data",
+  "description": "A ledger of disposals, not a set of totals. Schedule CG's own boxes are derived from these rows by engine/, because the rate that applies to a row depends on its asset class, its holding period and its transfer date - and the 23-Jul-2024 changeover means two disposals of the same scrip in one year can attract different rates.",
+  "type": "object",
+  "required": [
+    "disposals",
+    "totals"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "disposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "asset_class",
+          "description",
+          "acquired_on",
+          "transferred_on",
+          "full_value",
+          "cost_of_acquisition"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "asset_class": {
+            "description": "Decides the section and the rate. 'equity_stt' is listed equity or equity-oriented mutual funds where STT was paid (111A / 112A); 'debt_mf_specified' is a specified mutual fund under 50AA, always short-term whatever the holding period.",
+            "enum": [
+              "equity_stt",
+              "equity_unlisted",
+              "debt_mf_specified",
+              "debt_mf_other",
+              "bonds_debentures",
+              "immovable_property",
+              "gold_jewellery",
+              "foreign_shares",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "isin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "acquired_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "transferred_on": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "full_value": {
+            "$ref": "#/$defs/money",
+            "description": "Sale consideration as the document states it. Say in basis whether the figure is before charges or already net of them: charges already taken off here must not be reported again in transfer_expenses."
+          },
+          "cost_of_acquisition": {
+            "$ref": "#/$defs/money",
+            "description": "Purchase value as the document states it. Where the document states the charges paid on purchase separately, leave them out of this figure and report them in purchase_expenses; engine/ adds the two."
+          },
+          "purchase_expenses": {
+            "$ref": "#/$defs/money",
+            "description": "Charges paid to acquire the asset that the document states separately from the purchase value: brokerage, stamp duty, exchange and SEBI charges, GST. They are part of the cost of acquisition and engine/ adds them to it. Never securities transaction tax."
+          },
+          "cost_of_improvement": {
+            "$ref": "#/$defs/money"
+          },
+          "transfer_expenses": {
+            "$ref": "#/$defs/money",
+            "description": "Expenditure wholly and exclusively in connection with the transfer, as the document states it for this sale: brokerage, exchange and SEBI charges, GST, stamp duty. Never securities transaction tax, for which section 48 allows no deduction."
+          },
+          "stt": {
+            "$ref": "#/$defs/money",
+            "description": "Securities transaction tax the document states for this trade. Recorded so that it can be seen to have been left out: it is deducted nowhere in computing a capital gain."
+          },
+          "fmv_31jan2018": {
+            "$ref": "#/$defs/money",
+            "description": "Grandfathering under 112A. Required for equity acquired before 01-02-2018; leave out otherwise."
+          },
+          "stated_gain": {
+            "$ref": "#/$defs/money",
+            "description": "The gain the document itself states, if it states one. Reported for cross-checking; engine/ computes its own."
+          },
+          "stated_term": {
+            "enum": [
+              "short",
+              "long",
+              null
+            ],
+            "description": "How the document classified it, if it did. engine/ derives the term from the dates and flags any disagreement."
+          }
+        }
+      }
+    },
+    "deductions": {
+      "type": "array",
+      "description": "Exemptions claimed against these gains (54, 54B, 54EC, 54F).",
+      "items": {
+        "type": "object",
+        "required": [
+          "section",
+          "amount"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "section": {
+            "enum": [
+              "54",
+              "54B",
+              "54D",
+              "54EC",
+              "54F",
+              "54G",
+              "54GA",
+              "54GB"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "invested_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "amount": {
+            "$ref": "#/$defs/money"
+          }
+        }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "description": "Only what the documents themselves state, for reconciliation against the ledger. Never your own arithmetic.",
+      "additionalProperties": false,
+      "properties": {
+        "stated_short_term": {
+          "$ref": "#/$defs/money"
+        },
+        "stated_long_term": {
+          "$ref": "#/$defs/money"
+        },
+        "stated_total": {
+          "$ref": "#/$defs/money"
+        }
+      }
+    }
+  }
+}

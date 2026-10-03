@@ -1,0 +1,96 @@
+{
+  "title": "A return already filed, transcribed line by line - data",
+  "description": "Not a computation. This is what a filed ITR-V, acknowledgement, filed JSON or the utility's own PDF actually says, copied across without correction, so the tool's figures can be set beside it and every difference named.",
+  "type": "object",
+  "required": ["part_b_ti", "part_b_tti"],
+  "additionalProperties": false,
+  "properties": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Enough to be sure this document is the return for this person and this year.",
+      "properties": {
+        "form": {
+          "type": ["string", "null"],
+          "description": "ITR-1, ITR-2, ITR-3 and so on, as printed."
+        },
+        "assessment_year": {
+          "type": ["string", "null"],
+          "description": "As printed, e.g. '2026-27'."
+        },
+        "pan": { "type": ["string", "null"] },
+        "acknowledgement_number": { "type": ["string", "null"] },
+        "filed_on": {
+          "type": ["string", "null"],
+          "description": "ISO date the return was filed, if the document states it."
+        },
+        "filing_section": {
+          "type": ["string", "null"],
+          "description": "Section it was filed under, e.g. '139(1)', '139(4)', '139(5)' for a revised return."
+        },
+        "revised": {
+          "type": ["boolean", "null"],
+          "description": "True where the document says it is a revised or updated return, which matters because an earlier filing then no longer stands."
+        }
+      }
+    },
+    "part_b_ti": {
+      "type": "array",
+      "description": "Every line of Part B-TI the document prints, in the order it prints them, including lines that are nil. A line left out cannot be compared, and a missing line is indistinguishable from an agreed one.",
+      "items": {
+        "type": "object",
+        "required": ["item", "label", "amount"],
+        "additionalProperties": false,
+        "properties": {
+          "item": {
+            "type": "string",
+            "description": "The line number exactly as the document prints it: '1', '3i', '4ai', '12c'. This is what the comparison matches on, so it is copied character for character and never tidied, renumbered or guessed at."
+          },
+          "label": {
+            "type": "string",
+            "description": "The line's wording as printed, abbreviated only if it runs past a line break in the source."
+          },
+          "amount": { "$ref": "#/$defs/money" }
+        }
+      }
+    },
+    "part_b_tti": {
+      "type": "array",
+      "description": "Every line of Part B-TTI the document prints, on the same terms. This is the part the tool compares against, so completeness here matters most.",
+      "items": {
+        "type": "object",
+        "required": ["item", "label", "amount"],
+        "additionalProperties": false,
+        "properties": {
+          "item": {
+            "type": "string",
+            "description": "The line number exactly as printed: '1a', '2a', '2giv', '8e', '10e'. Copied character for character."
+          },
+          "label": {
+            "type": "string",
+            "description": "The line's wording as printed."
+          },
+          "amount": { "$ref": "#/$defs/money" }
+        }
+      }
+    },
+    "schedules": {
+      "type": "array",
+      "description": "Optional. Totals of other schedules the document prints - Schedule S item 6, Schedule BP item A37, Schedule OS item 6, Schedule TR - so a difference in the tax can be traced to the schedule it came from.",
+      "items": {
+        "type": "object",
+        "required": ["schedule", "item", "amount"],
+        "additionalProperties": false,
+        "properties": {
+          "schedule": {
+            "type": "string",
+            "description": "As printed, e.g. 'Schedule BP'."
+          },
+          "item": { "type": "string" },
+          "label": { "type": ["string", "null"] },
+          "amount": { "$ref": "#/$defs/money" }
+        }
+      }
+    }
+  }
+}

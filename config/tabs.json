@@ -1,0 +1,263 @@
+{
+  "ay_default": "2026-27",
+  "default_engine": "claude",
+  "_note": "A tab owns a list of `sources`, each a directory (scanned recursively) or a glob, relative to the active profile's documents folder. Prefix with an alias from `roots` to keep long export paths in one place. Globs matter because an export folder rarely lines up with an ITR schedule: one folder here holds capital gains, dividends and bank statements, which belong to three different schedules.",
+  "tabs": [
+    {
+      "id": "general",
+      "no": 1,
+      "title": "General",
+      "kind": "extract",
+      "schedules": [
+        "Part A-GEN",
+        "Bank accounts",
+        "115BAC option"
+      ],
+      "sources": [
+        "00_general"
+      ],
+      "implemented": true
+    },
+    {
+      "id": "salary",
+      "no": 2,
+      "title": "Salary",
+      "kind": "extract",
+      "schedules": [
+        "Schedule S"
+      ],
+      "sources": [
+        "01_salary"
+      ],
+      "implemented": true
+    },
+    {
+      "id": "house_property",
+      "no": 3,
+      "title": "House Property",
+      "kind": "extract",
+      "schedules": [
+        "Schedule HP"
+      ],
+      "sources": [
+        "02_house_property"
+      ],
+      "implemented": true
+    },
+    {
+      "id": "books",
+      "no": 4,
+      "title": "Books",
+      "kind": "extract",
+      "schedules": [
+        "Part A-BS",
+        "Part A-P&L",
+        "Part A-OI",
+        "Part A-QD"
+      ],
+      "sources": [
+        "03_business/books"
+      ],
+      "_note": "A broker's tax P&L usually reaches this tab as well as Capital Gains: its F&O and intraday sheets are business income under Schedule BP, its delivery sheets are capital gains. The two tabs read the same workbook and take different parts of it. Routing is decided by the classifier.",
+      "implemented": true
+    },
+    {
+      "id": "business_computation",
+      "no": 5,
+      "title": "Business Computation",
+      "kind": "derive",
+      "schedules": [
+        "Schedule BP",
+        "ICDS",
+        "ESR"
+      ],
+      "sources": [
+        "03_business"
+      ],
+      "implemented": true,
+      "_note": "Derived, not extracted: Schedule BP is computed from the Books tab (Part A-P&L and Part A-OI) and the Depreciation tab, in engine/bp.py."
+    },
+    {
+      "id": "depreciation",
+      "no": 6,
+      "title": "Depreciation",
+      "kind": "derive",
+      "schedules": [
+        "DPM",
+        "DOA",
+        "DEP",
+        "DCG"
+      ],
+      "sources": [],
+      "implemented": true,
+      "_note": "Derived: computed in engine/depreciation.py from the assets the Books extraction finds on invoices."
+    },
+    {
+      "id": "capital_gains",
+      "no": 7,
+      "title": "Capital Gains",
+      "kind": "extract",
+      "schedules": [
+        "Schedule CG"
+      ],
+      "sources": [
+        "04_capital_gains"
+      ],
+      "implemented": true,
+      "extraction": "tabular"
+    },
+    {
+      "id": "scrip_112a",
+      "no": 8,
+      "title": "Schedule 112A",
+      "kind": "derive",
+      "schedules": [
+        "Schedule 112A"
+      ],
+      "sources": [],
+      "implemented": true,
+      "_note": "Derived, not extracted: built in engine/schedule_112a.py from the section 112A rows of the Capital Gains ledger, so the two cannot differ. Sales of shares acquired after 31 January 2018 are entered as one consolidated row; earlier ones scrip by scrip."
+    },
+    {
+      "id": "vda",
+      "no": 9,
+      "title": "VDA",
+      "kind": "extract",
+      "schedules": [
+        "Schedule VDA"
+      ],
+      "sources": [
+        "04_capital_gains/vda"
+      ],
+      "implemented": true,
+      "conditional": "Only if virtual digital assets were transferred"
+    },
+    {
+      "id": "other_sources",
+      "no": 10,
+      "title": "Other Sources",
+      "kind": "extract",
+      "schedules": [
+        "Schedule OS"
+      ],
+      "sources": [
+        "05_other_sources"
+      ],
+      "implemented": true
+    },
+    {
+      "id": "deductions",
+      "no": 11,
+      "title": "Deductions",
+      "kind": "extract",
+      "schedules": [
+        "Schedule VI-A",
+        "80G",
+        "80D"
+      ],
+      "sources": [
+        "06_deductions"
+      ],
+      "implemented": true
+    },
+    {
+      "id": "taxes_paid",
+      "no": 12,
+      "title": "Taxes Paid",
+      "kind": "extract",
+      "schedules": [
+        "TDS1",
+        "TDS2",
+        "TDS3",
+        "TCS",
+        "IT"
+      ],
+      "sources": [
+        "07_taxes_paid"
+      ],
+      "implemented": true
+    },
+    {
+      "id": "setoff_cfl",
+      "no": 13,
+      "title": "Set-off & Carry Forward",
+      "kind": "extract",
+      "schedules": [
+        "CYLA",
+        "BFLA",
+        "CFL",
+        "UD"
+      ],
+      "sources": [
+        "10_prior_year_losses"
+      ],
+      "implemented": true,
+      "_note": "The only thing extracted is the opening position: losses carried forward from earlier years. The schedules themselves are computed in engine/setoff.py."
+    },
+    {
+      "id": "foreign_special",
+      "no": 14,
+      "title": "Foreign Income",
+      "kind": "extract",
+      "schedules": [
+        "FSI",
+        "TR",
+        "FA"
+      ],
+      "sources": [
+        "09_foreign_assets"
+      ],
+      "implemented": true,
+      "conditional": "Mandatory for a resident with any foreign income or asset: shares from an employer's stock plan held abroad, a foreign brokerage or bank account, dividends taxed at source in another country."
+    },
+    {
+      "id": "assets_liabilities",
+      "no": 15,
+      "title": "Assets & Liabilities",
+      "kind": "extract",
+      "schedules": [
+        "Schedule AL"
+      ],
+      "sources": [
+        "08_assets_liabilities"
+      ],
+      "implemented": true,
+      "conditional": "Only if total income exceeds Rs 50 lakh"
+    },
+    {
+      "id": "summary",
+      "no": 16,
+      "title": "Summary",
+      "kind": "derive",
+      "schedules": [
+        "Part B-TI",
+        "Part B-TTI",
+        "234A/B/C"
+      ],
+      "sources": [],
+      "implemented": true,
+      "depends_on": [
+        "salary",
+        "other_sources",
+        "deductions",
+        "taxes_paid",
+        "capital_gains"
+      ]
+    },
+    {
+      "id": "filed_return",
+      "no": 17,
+      "title": "Filed Return",
+      "kind": "extract",
+      "schedules": [
+        "Part B-TI",
+        "Part B-TTI"
+      ],
+      "sources": [
+        "08_filed_return"
+      ],
+      "implemented": true,
+      "_note": "Transcription of a return already filed, so the computed figures can be set beside it. The only schedule whose job is fidelity rather than correctness."
+    }
+  ]
+}

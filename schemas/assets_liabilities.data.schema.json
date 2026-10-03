@@ -1,0 +1,83 @@
+{
+  "title": "ITR-3 Schedule AL (Assets and Liabilities) - data",
+  "description": "Required where total income exceeds Rs 50 lakh. Reported at cost, not market value.",
+  "type": "object",
+  "required": [
+    "applicable"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "applicable": {
+      "type": "boolean",
+      "description": "Whether total income exceeds Rs 50 lakh"
+    },
+    "immovable": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "description",
+          "cost"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cost": {
+            "$ref": "#/$defs/money",
+            "description": "Table A, cost of the property"
+          }
+        }
+      }
+    },
+    "movable": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "jewellery_bullion": {
+          "$ref": "#/$defs/money",
+          "description": "Table B(i)"
+        },
+        "archaeological_art": {
+          "$ref": "#/$defs/money",
+          "description": "Table B(ii)"
+        },
+        "vehicles_yachts_aircraft": {
+          "$ref": "#/$defs/money",
+          "description": "Table B(iii)"
+        },
+        "bank_balances": {
+          "$ref": "#/$defs/money",
+          "description": "Table B(iv)(a)"
+        },
+        "shares_and_securities": {
+          "$ref": "#/$defs/money",
+          "description": "Table B(iv)(b)"
+        },
+        "insurance_policies": {
+          "$ref": "#/$defs/money",
+          "description": "Table B(iv)(c)"
+        },
+        "loans_and_advances_given": {
+          "$ref": "#/$defs/money",
+          "description": "Table B(iv)(d)"
+        },
+        "cash_in_hand": {
+          "$ref": "#/$defs/money",
+          "description": "Table B(iv)(e)"
+        }
+      }
+    },
+    "liabilities": {
+      "$ref": "#/$defs/money",
+      "description": "Table C, liabilities in relation to the assets above"
+    }
+  }
+}

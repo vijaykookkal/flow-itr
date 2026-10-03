@@ -1,0 +1,100 @@
+{
+  "title": "ITR-3 Schedule OS (Income from Other Sources) - data",
+  "type": "object",
+  "required": [
+    "items",
+    "gross_income_from_os"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "description": "Ledger of every interest/dividend line found, one row per certificate line. Totals are derived from this, never stated independently.",
+      "items": {
+        "type": "object",
+        "required": [
+          "payer",
+          "category",
+          "amount"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "payer": {
+            "type": "string"
+          },
+          "account_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "enum": [
+              "interest_savings",
+              "interest_deposits",
+              "interest_income_tax_refund",
+              "interest_other",
+              "dividend",
+              "family_pension",
+              "winnings_115BB",
+              "other"
+            ]
+          },
+          "amount": {
+            "$ref": "#/$defs/money"
+          },
+          "tds_deducted": {
+            "$ref": "#/$defs/money"
+          },
+          "received_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Date of receipt or credit, YYYY-MM-DD. Required for an amount stated in a foreign currency: Rule 115 fixes its exchange rate by the month of receipt, so without a date it cannot be converted and is left out of the return."
+          },
+          "tax_withheld_outside_india": {
+            "$ref": "#/$defs/money",
+            "description": "Tax withheld abroad on this receipt, as the foreign document states it -- in the foreign currency if that is how it is stated. This is what Schedule FSI column (d) is built from, and the relief under section 90 follows from it. It is NOT Indian TDS: that goes in tds_deducted."
+          }
+        }
+      }
+    },
+    "totals_by_category": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "interest_savings": {
+          "$ref": "#/$defs/money"
+        },
+        "interest_deposits": {
+          "$ref": "#/$defs/money"
+        },
+        "interest_income_tax_refund": {
+          "$ref": "#/$defs/money"
+        },
+        "interest_other": {
+          "$ref": "#/$defs/money"
+        },
+        "dividend": {
+          "$ref": "#/$defs/money"
+        },
+        "family_pension": {
+          "$ref": "#/$defs/money"
+        },
+        "winnings_115BB": {
+          "$ref": "#/$defs/money"
+        },
+        "other": {
+          "$ref": "#/$defs/money"
+        }
+      }
+    },
+    "deductions_57": {
+      "$ref": "#/$defs/money"
+    },
+    "gross_income_from_os": {
+      "$ref": "#/$defs/money"
+    }
+  }
+}

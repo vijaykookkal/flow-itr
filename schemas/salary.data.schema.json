@@ -1,0 +1,152 @@
+{
+  "title": "ITR-3 Schedule S (Salary) - data",
+  "type": "object",
+  "required": [
+    "employers",
+    "deductions_16",
+    "income_chargeable"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "employers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "gross_salary"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tan": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "period": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "salary_17_1": {
+            "$ref": "#/$defs/money"
+          },
+          "perquisites_17_2": {
+            "$ref": "#/$defs/money"
+          },
+          "profits_in_lieu_17_3": {
+            "$ref": "#/$defs/money"
+          },
+          "gross_salary": {
+            "$ref": "#/$defs/money"
+          },
+          "exempt_allowances": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "section",
+                "description",
+                "amount"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "section": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "amount": {
+                  "$ref": "#/$defs/money"
+                }
+              }
+            }
+          },
+          "net_salary": {
+            "$ref": "#/$defs/money"
+          },
+          "salary_17_1_components": {
+            "type": "array",
+            "description": "The parts this figure is made of, as the document itemises them. Form 16's Annexure breaks up section 17(1); Form 12BA breaks up the perquisites under section 17(2), which is where an RSU or ESOP perquisite is named. Omit the array entirely if no document itemises the figure -- an empty list would say the breakup is nil, which is a different claim.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "description",
+                "amount"
+              ],
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "description": "The component as the document names it, e.g. 'Basic salary', 'Stock options (non-qualified) under section 17(2)(vi)'."
+                },
+                "ref": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Where it sits in the document: a Form 12BA serial number such as '12', or a salary-annexure line."
+                },
+                "amount": {
+                  "$ref": "#/$defs/money"
+                }
+              }
+            }
+          },
+          "perquisites_17_2_components": {
+            "type": "array",
+            "description": "The parts this figure is made of, as the document itemises them. Form 16's Annexure breaks up section 17(1); Form 12BA breaks up the perquisites under section 17(2), which is where an RSU or ESOP perquisite is named. Omit the array entirely if no document itemises the figure -- an empty list would say the breakup is nil, which is a different claim.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "description",
+                "amount"
+              ],
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "description": "The component as the document names it, e.g. 'Basic salary', 'Stock options (non-qualified) under section 17(2)(vi)'."
+                },
+                "ref": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Where it sits in the document: a Form 12BA serial number such as '12', or a salary-annexure line."
+                },
+                "amount": {
+                  "$ref": "#/$defs/money"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "deductions_16": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "standard_16_ia": {
+          "$ref": "#/$defs/money"
+        },
+        "entertainment_16_ii": {
+          "$ref": "#/$defs/money"
+        },
+        "professional_tax_16_iii": {
+          "$ref": "#/$defs/money"
+        }
+      }
+    },
+    "income_chargeable": {
+      "$ref": "#/$defs/money"
+    }
+  }
+}

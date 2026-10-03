@@ -1,0 +1,1139 @@
+{
+  "title": "ITR-3 Schedules FSI, TR and FA - data",
+  "description": "Three schedules of the return, each transcribed into the shape the form prints. FSI is income earned outside India and the relief claimed on it; TR summarises that relief by country; FA is a disclosure of foreign assets held during the CALENDAR year, which is a different period from the rest of the return and must not be adjusted to the previous year.",
+  "type": "object",
+  "required": [
+    "schedule_fsi",
+    "schedule_tr",
+    "schedule_fa"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "calendar_year": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The calendar year Schedule FA covers, e.g. '2025'. For the previous year 2025-26 this is calendar 2025, ending 31 December 2025."
+    },
+    "schedule_fsi": {
+      "type": "array",
+      "description": "Schedule FSI, one entry per country. Only a resident may claim here. Each country carries a row for every head of income, in the form's order, including the heads that are nil - the form prints all five.",
+      "items": {
+        "type": "object",
+        "required": [
+          "country_code",
+          "country",
+          "heads"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "country_code": {
+            "type": "string",
+            "description": "Column (a). The ITR country code as printed, e.g. '2' for the United States of America."
+          },
+          "country": {
+            "type": "string",
+            "description": "The country name as printed."
+          },
+          "taxpayer_identification_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Column (b). The taxpayer's identification number in that country."
+          },
+          "heads": {
+            "type": "array",
+            "description": "One row per head of income: i Salary, ii House Property, iii Business or Profession, iv Capital Gains, v Other Sources. Report all five even where nil, because the form prints all five and a missing row cannot be told from a nil one.",
+            "items": {
+              "type": "object",
+              "required": [
+                "item",
+                "head",
+                "income_outside_india"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "item": {
+                  "type": "string",
+                  "description": "The roman numeral as printed: 'i' to 'v'."
+                },
+                "head": {
+                  "type": "string",
+                  "description": "'Salary', 'House Property', 'Business or Profession', 'Capital Gains' or 'Other Sources'."
+                },
+                "income_outside_india": {
+                  "$ref": "#/$defs/money",
+                  "description": "Column (c). Income from outside India, and it must be the figure already included in Part B-TI - not the gross before Indian tax treatment."
+                },
+                "tax_paid_outside_india": {
+                  "$ref": "#/$defs/money",
+                  "description": "Column (d). Tax actually paid or withheld abroad, as the foreign document states it. A Form 1042-S is the evidence for US withholding."
+                },
+                "tax_payable_in_india": {
+                  "$ref": "#/$defs/money",
+                  "description": "Column (e). Tax payable on that income under the normal provisions in India. This is computed, so leave it out unless the document states it."
+                },
+                "relief_available": {
+                  "$ref": "#/$defs/money",
+                  "description": "Column (f). The lower of (d) and (e). Leave it out unless the document states it; the lower-of rule is arithmetic and is applied in code."
+                },
+                "dtaa_article": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The relevant article of the DTAA where relief is claimed under section 90 or 90A, as printed - '10' for dividends under the India-US treaty."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schedule_tr": {
+      "type": "object",
+      "description": "Schedule TR, the summary of relief claimed for taxes paid outside India.",
+      "additionalProperties": false,
+      "properties": {
+        "countries": {
+          "type": "array",
+          "description": "Item 1, one row per country.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string",
+                "description": "Column (a)."
+              },
+              "country": {
+                "type": "string"
+              },
+              "taxpayer_identification_number": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (b)."
+              },
+              "total_taxes_paid_outside": {
+                "$ref": "#/$defs/money",
+                "description": "Column (c). The total of column (d) of Schedule FSI for that country."
+              },
+              "total_relief_available": {
+                "$ref": "#/$defs/money",
+                "description": "Column (d). The total of column (f) of Schedule FSI for that country."
+              },
+              "relief_section": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (e). '90', '90A' or '91'. Section 90 or 90A where a treaty applies, 91 where it does not."
+              }
+            }
+          }
+        },
+        "tax_refunded_by_foreign_authority": {
+          "$ref": "#/$defs/money",
+          "description": "Item 4a. Tax paid outside India, on which relief was allowed in India, that the foreign authority has since refunded or credited. Usually nil, and it is a question the form asks explicitly."
+        },
+        "refund_relates_to_ay": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Item 4b. The assessment year in which that relief was allowed in India."
+        }
+      }
+    },
+    "schedule_fa": {
+      "type": "object",
+      "description": "Schedule FA. A disclosure of foreign assets held at any time during the CALENDAR year, not the previous year. Omitting an asset carries penalties under the Black Money Act, so an asset in doubt is reported, not left out.",
+      "additionalProperties": false,
+      "properties": {
+        "a1_depository_accounts": {
+          "type": "array",
+          "description": "A1. Foreign depository accounts - a bank account held abroad.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "institution_name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string",
+                "description": "Columns (2) and (3)."
+              },
+              "country": {
+                "type": "string"
+              },
+              "institution_name": {
+                "type": "string",
+                "description": "Column (4). Name of the financial institution."
+              },
+              "institution_address": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (5)."
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (6)."
+              },
+              "account_number": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (7)."
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (8), e.g. 'Beneficial owner', 'Owner', 'Beneficiary'."
+              },
+              "opened_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (9). ISO date the account was opened."
+              },
+              "peak_value": {
+                "$ref": "#/$defs/money",
+                "description": "Column (10). Peak balance during the period, in rupees."
+              },
+              "closing_value": {
+                "$ref": "#/$defs/money",
+                "description": "Column (11). Closing balance, in rupees."
+              },
+              "gross_credited": {
+                "$ref": "#/$defs/money",
+                "description": "Column (12). Gross interest, dividend or other amount paid or credited to the account during the period."
+              },
+              "nature_of_amount": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (12a) on A2: what the amount credited was - 'Dividend', 'Interest'."
+              },
+              "valuations": {
+                "type": "array",
+                "description": "The account's total value on each date a document states it within the calendar year -- every statement date, and 31 December in particular. In the document's own currency. The peak and closing balances are worked out from these in code, each at the rate for its own date, so give every one you can find rather than choosing.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "on",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "ISO date of this figure."
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money",
+                      "description": "Total account value on that date, shares and cash together."
+                    }
+                  }
+                }
+              },
+              "credits": {
+                "type": "array",
+                "description": "Each amount paid or credited to the account in the calendar year, gross, with its own date: dividends, interest, sale proceeds.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "on",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "ISO date of this figure."
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money",
+                      "description": "The gross amount credited, before any tax withheld."
+                    },
+                    "nature": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "'Dividend', 'Interest', 'Sale proceeds' or 'Other income'."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "a2_custodial_accounts": {
+          "type": "array",
+          "description": "A2. Foreign custodial accounts - a broking or demat account abroad, such as a Merrill or Alpaca account holding vested shares.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "institution_name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string",
+                "description": "Columns (2) and (3)."
+              },
+              "country": {
+                "type": "string"
+              },
+              "institution_name": {
+                "type": "string",
+                "description": "Column (4). Name of the financial institution."
+              },
+              "institution_address": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (5)."
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (6)."
+              },
+              "account_number": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (7)."
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (8), e.g. 'Beneficial owner', 'Owner', 'Beneficiary'."
+              },
+              "opened_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (9). ISO date the account was opened."
+              },
+              "peak_value": {
+                "$ref": "#/$defs/money",
+                "description": "Column (10). Peak balance during the period, in rupees."
+              },
+              "closing_value": {
+                "$ref": "#/$defs/money",
+                "description": "Column (11). Closing balance, in rupees."
+              },
+              "gross_credited": {
+                "$ref": "#/$defs/money",
+                "description": "Column (12). Gross interest, dividend or other amount paid or credited to the account during the period."
+              },
+              "nature_of_amount": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (12a) on A2: what the amount credited was - 'Dividend', 'Interest'."
+              },
+              "valuations": {
+                "type": "array",
+                "description": "The account's total value on each date a document states it within the calendar year -- every statement date, and 31 December in particular. In the document's own currency. The peak and closing balances are worked out from these in code, each at the rate for its own date, so give every one you can find rather than choosing.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "on",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "ISO date of this figure."
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money",
+                      "description": "Total account value on that date, shares and cash together."
+                    }
+                  }
+                }
+              },
+              "credits": {
+                "type": "array",
+                "description": "Each amount paid or credited to the account in the calendar year, gross, with its own date: dividends, interest, sale proceeds.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "on",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "ISO date of this figure."
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money",
+                      "description": "The gross amount credited, before any tax withheld."
+                    },
+                    "nature": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "'Dividend', 'Interest', 'Sale proceeds' or 'Other income'."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "a3_equity_and_debt": {
+          "type": "array",
+          "description": "A3. Foreign equity and debt interest held in any entity. One row per holding, so vested RSUs in an employer's stock are a row of their own.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "entity_name"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "entity_name": {
+                "type": "string",
+                "description": "Column (4)."
+              },
+              "entity_address": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (5)."
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (6)."
+              },
+              "nature_of_entity": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (7), e.g. 'Company'."
+              },
+              "acquired_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Column (8). ISO date the interest was acquired. For RSUs this is the vest date."
+              },
+              "initial_value": {
+                "$ref": "#/$defs/money",
+                "description": "Column (9). Initial value of the investment, in rupees."
+              },
+              "peak_value": {
+                "$ref": "#/$defs/money",
+                "description": "Column (10). Peak balance during the period, in rupees."
+              },
+              "closing_value": {
+                "$ref": "#/$defs/money",
+                "description": "Column (11). Closing balance, in rupees."
+              },
+              "gross_amount_credited": {
+                "$ref": "#/$defs/money",
+                "description": "Column (12). Total gross amount paid or credited with respect to the holding during the period - dividends, gross of withholding."
+              },
+              "gross_proceeds_on_sale": {
+                "$ref": "#/$defs/money",
+                "description": "Column (13). Total gross proceeds from sale or redemption during the period."
+              },
+              "acquisitions": {
+                "type": "array",
+                "description": "Every lot that makes up this holding and was held at any time in the calendar year: the date it was acquired (the vest date for an RSU), the number of shares, and its cost in the document's currency. The row's initial value is the total of these, each converted at its own date.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "on",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "ISO date of this figure."
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money",
+                      "description": "Cost of the lot: for an RSU, the market value of the shares on the vest date."
+                    },
+                    "quantity": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "description": "Number of shares or units in the lot."
+                    }
+                  }
+                }
+              },
+              "valuations": {
+                "type": "array",
+                "description": "The value of this holding on each date a document states it within the calendar year, 31 December in particular. Nil on a date after it was all sold.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "on",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "ISO date of this figure."
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money",
+                      "description": "Value of the whole holding in this entity on that date."
+                    }
+                  }
+                }
+              },
+              "credits": {
+                "type": "array",
+                "description": "Each dividend or interest payment on this holding in the calendar year, gross.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "on",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "ISO date of this figure."
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money",
+                      "description": "The gross amount, before tax withheld."
+                    }
+                  }
+                }
+              },
+              "sales": {
+                "type": "array",
+                "description": "Each sale or redemption of this holding in the calendar year.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "on",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "on": {
+                      "type": "string",
+                      "description": "ISO date of this figure."
+                    },
+                    "amount": {
+                      "$ref": "#/$defs/money",
+                      "description": "Gross proceeds of the sale."
+                    },
+                    "quantity": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "lot_acquired_on": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "ISO acquisition date of the lot these shares came from, where the document says which lot was sold. Give one sales entry per lot sold."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "a4_insurance_contracts": {
+          "type": "array",
+          "description": "A4. Foreign cash value insurance or annuity contracts.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "description"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "What the asset is, named as the document names it."
+              },
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ownership": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Direct, beneficial owner or beneficiary."
+              },
+              "acquired_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "ISO date."
+              },
+              "total_investment": {
+                "$ref": "#/$defs/money",
+                "description": "Total investment at cost, in rupees."
+              },
+              "income_derived": {
+                "$ref": "#/$defs/money",
+                "description": "Income derived from the asset during the period."
+              },
+              "nature_of_income": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "income_offered_in_return": {
+                "$ref": "#/$defs/money",
+                "description": "How much of that income is taxable and offered in this return."
+              },
+              "offered_in_schedule": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Which schedule of this return it is offered in, and the item number there."
+              }
+            }
+          }
+        },
+        "b_financial_interest": {
+          "type": "array",
+          "description": "B. Financial interest in any entity held outside India.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "description"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "What the asset is, named as the document names it."
+              },
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ownership": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Direct, beneficial owner or beneficiary."
+              },
+              "acquired_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "ISO date."
+              },
+              "total_investment": {
+                "$ref": "#/$defs/money",
+                "description": "Total investment at cost, in rupees."
+              },
+              "income_derived": {
+                "$ref": "#/$defs/money",
+                "description": "Income derived from the asset during the period."
+              },
+              "nature_of_income": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "income_offered_in_return": {
+                "$ref": "#/$defs/money",
+                "description": "How much of that income is taxable and offered in this return."
+              },
+              "offered_in_schedule": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Which schedule of this return it is offered in, and the item number there."
+              }
+            }
+          }
+        },
+        "c_immovable_property": {
+          "type": "array",
+          "description": "C. Immovable property held outside India.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "description"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "What the asset is, named as the document names it."
+              },
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ownership": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Direct, beneficial owner or beneficiary."
+              },
+              "acquired_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "ISO date."
+              },
+              "total_investment": {
+                "$ref": "#/$defs/money",
+                "description": "Total investment at cost, in rupees."
+              },
+              "income_derived": {
+                "$ref": "#/$defs/money",
+                "description": "Income derived from the asset during the period."
+              },
+              "nature_of_income": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "income_offered_in_return": {
+                "$ref": "#/$defs/money",
+                "description": "How much of that income is taxable and offered in this return."
+              },
+              "offered_in_schedule": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Which schedule of this return it is offered in, and the item number there."
+              }
+            }
+          }
+        },
+        "d_other_capital_assets": {
+          "type": "array",
+          "description": "D. Any other capital asset held outside India.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "description"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "What the asset is, named as the document names it."
+              },
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ownership": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Direct, beneficial owner or beneficiary."
+              },
+              "acquired_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "ISO date."
+              },
+              "total_investment": {
+                "$ref": "#/$defs/money",
+                "description": "Total investment at cost, in rupees."
+              },
+              "income_derived": {
+                "$ref": "#/$defs/money",
+                "description": "Income derived from the asset during the period."
+              },
+              "nature_of_income": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "income_offered_in_return": {
+                "$ref": "#/$defs/money",
+                "description": "How much of that income is taxable and offered in this return."
+              },
+              "offered_in_schedule": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Which schedule of this return it is offered in, and the item number there."
+              }
+            }
+          }
+        },
+        "e_signing_authority": {
+          "type": "array",
+          "description": "E. Accounts in which the taxpayer has signing authority and which are not already reported in A to D.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "description"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "What the asset is, named as the document names it."
+              },
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ownership": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Direct, beneficial owner or beneficiary."
+              },
+              "acquired_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "ISO date."
+              },
+              "total_investment": {
+                "$ref": "#/$defs/money",
+                "description": "Total investment at cost, in rupees."
+              },
+              "income_derived": {
+                "$ref": "#/$defs/money",
+                "description": "Income derived from the asset during the period."
+              },
+              "nature_of_income": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "income_offered_in_return": {
+                "$ref": "#/$defs/money",
+                "description": "How much of that income is taxable and offered in this return."
+              },
+              "offered_in_schedule": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Which schedule of this return it is offered in, and the item number there."
+              }
+            }
+          }
+        },
+        "f_trusts": {
+          "type": "array",
+          "description": "F. Trusts created outside India in which the taxpayer is a trustee, beneficiary or settlor.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "description"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "What the asset is, named as the document names it."
+              },
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ownership": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Direct, beneficial owner or beneficiary."
+              },
+              "acquired_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "ISO date."
+              },
+              "total_investment": {
+                "$ref": "#/$defs/money",
+                "description": "Total investment at cost, in rupees."
+              },
+              "income_derived": {
+                "$ref": "#/$defs/money",
+                "description": "Income derived from the asset during the period."
+              },
+              "nature_of_income": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "income_offered_in_return": {
+                "$ref": "#/$defs/money",
+                "description": "How much of that income is taxable and offered in this return."
+              },
+              "offered_in_schedule": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Which schedule of this return it is offered in, and the item number there."
+              }
+            }
+          }
+        },
+        "g_other_income": {
+          "type": "array",
+          "description": "G. Any other income derived from a source outside India that is not already reported in A to F.",
+          "items": {
+            "type": "object",
+            "required": [
+              "country_code",
+              "country",
+              "description"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "country_code": {
+                "type": "string"
+              },
+              "country": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "description": "What the asset is, named as the document names it."
+              },
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "zip_code": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "ownership": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Direct, beneficial owner or beneficiary."
+              },
+              "acquired_on": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "ISO date."
+              },
+              "total_investment": {
+                "$ref": "#/$defs/money",
+                "description": "Total investment at cost, in rupees."
+              },
+              "income_derived": {
+                "$ref": "#/$defs/money",
+                "description": "Income derived from the asset during the period."
+              },
+              "nature_of_income": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "income_offered_in_return": {
+                "$ref": "#/$defs/money",
+                "description": "How much of that income is taxable and offered in this return."
+              },
+              "offered_in_schedule": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Which schedule of this return it is offered in, and the item number there."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

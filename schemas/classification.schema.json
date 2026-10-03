@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Document classification manifest",
+  "description": "Which schedules each document belongs to. Produced by an AI pass over the document tree, reviewed by a human, then committed. Extraction runs read this file -- they never re-ask the model where a document belongs, so routing stays deterministic between runs.",
+  "type": "object",
+  "required": [
+    "documents"
+  ],
+  "properties": {
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "kind",
+          "tabs",
+          "confidence",
+          "why"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Exactly as given in the input listing, relative to the AY source root."
+          },
+          "kind": {
+            "type": "string",
+            "description": "What this document is, in plain words: 'Form 16 Part B', 'broker capital-gains statement', 'savings account statement'."
+          },
+          "tabs": {
+            "type": "array",
+            "description": "Tab ids this belongs to. Empty means it belongs to no schedule. Several is normal and correct -- a broker tax P&L feeds both Capital Gains and Business.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "low means you guessed from the filename and could not confirm it."
+          },
+          "why": {
+            "type": "string",
+            "description": "The evidence. Say whether it came from the filename alone or from opening the file."
+          },
+          "opened": {
+            "type": "boolean",
+            "description": "True if you read the file rather than judging by name."
+          },
+          "reported_summary": {
+            "type": "boolean",
+            "description": "True for a document that states figures REPORTED TO the department or aggregated by it -- the AIS, the TIS, Form 26AS. These are never a source of ledger rows, and every schedule's reconciliation is given them whatever tabs they are routed to. A broker's own statement is not one of these."
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

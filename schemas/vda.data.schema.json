@@ -1,0 +1,64 @@
+{
+  "title": "ITR-3 Schedule VDA (Virtual Digital Assets) - data",
+  "description": "Section 115BBH: a flat 30% on each transfer, no deduction but the cost of acquisition, and no set-off of any loss against any income. Each transfer is reported on its own.",
+  "type": "object",
+  "required": [
+    "transfers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "transfers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "asset",
+          "acquired_on",
+          "transferred_on",
+          "consideration",
+          "cost_of_acquisition"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "type": "string",
+            "description": "Column 1, name of the virtual digital asset"
+          },
+          "acquired_on": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "Column 2"
+          },
+          "transferred_on": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "description": "Column 3"
+          },
+          "head": {
+            "enum": [
+              "capital_gains",
+              "business_income",
+              null
+            ],
+            "description": "Column 4"
+          },
+          "consideration": {
+            "$ref": "#/$defs/money",
+            "description": "Column 5"
+          },
+          "cost_of_acquisition": {
+            "$ref": "#/$defs/money",
+            "description": "Column 6, acquisition cost only; nothing else is allowed"
+          },
+          "income": {
+            "$ref": "#/$defs/money",
+            "description": "Column 7, being column 5 minus column 6, floored at nil because a VDA loss cannot be set off"
+          }
+        }
+      }
+    },
+    "total_income": {
+      "$ref": "#/$defs/money"
+    }
+  }
+}

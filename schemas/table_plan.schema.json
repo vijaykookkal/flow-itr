@@ -1,0 +1,147 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "Extraction plan",
+ "description": "What the engine found in every document routed to a schedule. Reading a document and working out its transactions is one generic skill, whatever the format, so the primary output is the rows themselves, in read_directly. A mapping in tables is only a shortcut the engine may choose for a very long table: it names which column means which field, and code reads every row. Every document routed to the schedule must appear in exactly one of the three lists.",
+ "type": "object",
+ "required": [
+  "read_directly",
+  "tables",
+  "excluded"
+ ],
+ "properties": {
+  "read_directly": {
+   "type": "array",
+   "description": "Documents the engine read itself, with every transaction it found for this schedule. Any format: PDF statement, Word export, text, short spreadsheet.",
+   "items": {
+    "type": "object",
+    "required": [
+     "file",
+     "rows",
+     "why"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "file": {
+      "type": "string",
+      "description": "File name exactly as given in the listing."
+     },
+     "rows": {
+      "type": "array",
+      "description": "One entry per transaction, in this schedule's row shape. Empty when the document was read and holds nothing for this schedule.",
+      "items": {
+       "type": "object"
+      }
+     },
+     "why": {
+      "type": "string",
+      "description": "What the document is, and where in it the rows came from."
+     }
+    }
+   }
+  },
+  "tables": {
+   "type": "array",
+   "description": "Column mappings for tables too long to transcribe. Code reads every row against the mapping.",
+   "items": {
+    "type": "object",
+    "required": [
+     "file",
+     "header_row",
+     "columns",
+     "why"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "file": {
+      "type": "string",
+      "description": "File name exactly as given in the listing."
+     },
+     "header_row": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "1-based row number holding the column headers."
+     },
+     "asset_class": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "description": "Applied to every row of this table when the table is single-class, e.g. an equity sheet."
+     },
+     "asset_class_column": {
+      "type": [
+       "string",
+       "null"
+      ],
+      "description": "Use instead of asset_class when the table itself names the class per row."
+     },
+     "columns": {
+      "type": "object",
+      "description": "schema field -> column header. Omit a field the table does not carry. A money field may instead name a LIST of headers, and code adds those columns together for each row: use it where a table spreads one figure over several columns, such as selling charges over brokerage, exchange charges and GST. Leave STT out of any such list.",
+      "additionalProperties": {
+       "type": [
+        "string",
+        "array"
+       ],
+       "items": {
+        "type": "string"
+       }
+      }
+     },
+     "require_columns": {
+      "type": "array",
+      "description": "Rows where any of these is blank are skipped. Use it to drop sub-headers, totals and blank separators.",
+      "items": {
+       "type": "string"
+      }
+     },
+     "stop_at_blank": {
+      "type": "boolean",
+      "description": "Stop at the first fully blank row after the header, for sheets holding several stacked tables."
+     },
+     "why": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "excluded": {
+   "type": "array",
+   "description": "Documents or sheets that contribute no rows, each with the kind of reason, so code never has to infer intent from prose.",
+   "items": {
+    "type": "object",
+    "required": [
+     "file",
+     "kind",
+     "why"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "file": {
+      "type": "string"
+     },
+     "kind": {
+      "type": "string",
+      "enum": [
+       "duplicate",
+       "other_schedule",
+       "summary_only",
+       "no_transactions",
+       "unreadable"
+      ],
+      "description": "duplicate: another listed document holds the same material (name it in why). other_schedule: belongs elsewhere (name the schedule). summary_only: aggregates used only for reconciliation. no_transactions: read, and holds nothing for this schedule. unreadable: could not be opened or read -- a gap in the return, not a choice."
+     },
+     "why": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "notes": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  }
+ }
+}

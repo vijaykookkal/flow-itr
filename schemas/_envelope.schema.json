@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Schedule file envelope",
+  "description": "Shared by every schedule. The validator composes this with schemas/<schedule>.data.schema.json, which supplies the 'data' subschema.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "ay",
+    "schedule",
+    "status",
+    "data"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "ay": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}$"
+    },
+    "schedule": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "generated_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "engine": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "prompt_version": {
+          "type": "string"
+        }
+      }
+    },
+    "input_fingerprint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "needs_review",
+        "failed"
+      ]
+    },
+    "unmapped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "text",
+          "why"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "why": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/$defs/money",
+            "description": "What the unplaced receipt or payment is worth, when the document states it. Give it whenever there is a figure: an amount left out of every line is a hole in the return, and its SIZE is what tells a reviewer whether it matters."
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "data": {
+      "type": "object"
+    },
+    "overrides_applied": {
+      "description": "Written by merge.py into resolved/ only. Never present in extracted/.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pointer": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "applied",
+              "stale",
+              "manual",
+              "orphaned"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "resolved_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "$defs": {
+    "money": {
+      "type": "object",
+      "description": "An amount with its evidence. Rupees go in `amount` as an integer. An amount the document states only in a foreign currency goes in `amount_foreign` with its ISO `currency`, exactly as stated, and `amount` is left out: conversion to rupees follows Rule 115 and is done in code, never by the extraction.",
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "description": "Rupees, as an integer."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "ISO 4217 code of the stated currency, e.g. USD."
+        },
+        "amount_foreign": {
+          "type": "number",
+          "description": "The amount exactly as stated in that currency, cents included."
+        },
+        "cite": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "amount"
+          ]
+        },
+        {
+          "required": [
+            "currency",
+            "amount_foreign"
+          ]
+        }
+      ]
+    }
+  }
+}

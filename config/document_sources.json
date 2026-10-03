@@ -1,0 +1,442 @@
+{
+  "_note": "Where the usual documents for an ITR-3 come from, and how to download each one. Shown on the Documents page under 'Get documents'. Flow only opens the site and shows these steps; you log in and download yourself. Websites change their menus, so steps say where to look rather than promising exact labels. Tokens, filled in from the return's year: {fy} 2025-26, {ay} 2026-27, {fy_start} 1 April 2025, {fy_end} 31 March 2026, {fy_end_year} 2026, {cy} the calendar year Schedule FA covers (2025 for FY 2025-26). 'match' holds patterns tried against what sorting recognised each document as, to say which sources you already use. 'for' names the schedules a document feeds. Add a source by adding an entry; no code changes.",
+  "groups": [
+    {
+      "id": "department",
+      "label": "Income-tax department"
+    },
+    {
+      "id": "employer",
+      "label": "Your employer"
+    },
+    {
+      "id": "brokers",
+      "label": "Brokers and demat"
+    },
+    {
+      "id": "funds",
+      "label": "Mutual funds"
+    },
+    {
+      "id": "foreign",
+      "label": "Foreign shares and stock plans"
+    },
+    {
+      "id": "banks",
+      "label": "Banks"
+    }
+  ],
+  "sources": [
+    {
+      "id": "incometax",
+      "group": "department",
+      "name": "Income-tax e-filing portal",
+      "url": "https://eportal.incometax.gov.in/iec/foservices/#/login",
+      "login": "Log in with your PAN and password, or with an Aadhaar OTP.",
+      "always": true,
+      "documents": [
+        {
+          "name": "Annual Information Statement (AIS) and Taxpayer Information Summary (TIS)",
+          "for": [
+            "taxes_paid",
+            "other_sources",
+            "capital_gains",
+            "salary",
+            "general"
+          ],
+          "match": [
+            "annual information statement",
+            "taxpayer information summary",
+            "\\bAIS\\b",
+            "\\bTIS\\b"
+          ],
+          "steps": [
+            "Open AIS from the Services menu, or from the AIS link on the dashboard, and press Proceed. It opens in a new tab.",
+            "Choose the AIS tab and the financial year {fy}.",
+            "Download the Taxpayer Information Summary and the Annual Information Statement, each as PDF."
+          ],
+          "notes": [
+            "Both PDFs are password-protected with your PAN in small letters followed by your date of birth as ddmmyyyy. Flow opens them by itself once the PAN and date of birth are entered under Returns.",
+            "The AIS keeps being updated until about mid-June. Download it again shortly before filing."
+          ]
+        },
+        {
+          "name": "Form 26AS",
+          "for": [
+            "taxes_paid"
+          ],
+          "match": [
+            "26AS",
+            "annual tax statement"
+          ],
+          "steps": [
+            "Open e-File › Income Tax Returns › View Form 26AS and confirm. You are taken to the TRACES site.",
+            "Agree to the terms, then choose View Tax Credit (Form 26AS).",
+            "Pick assessment year {ay}, choose to view it as HTML, then export it as PDF."
+          ],
+          "notes": [
+            "The PDF is protected with your date of birth as ddmmyyyy. Flow opens it by itself once the date of birth is entered under Returns."
+          ]
+        },
+        {
+          "name": "Returns already filed",
+          "for": [
+            "filed_return",
+            "setoff_cfl"
+          ],
+          "match": [
+            "filed return",
+            "\\bITR-?V\\b",
+            "acknowledgement",
+            "\\bITR-?3\\b"
+          ],
+          "steps": [
+            "Open e-File › Income Tax Returns › View Filed Returns.",
+            "For this year, if you have already filed: download the return form (PDF or JSON). Flow sets it beside its own figures, line by line.",
+            "For last year: download that return too if it carried forward any loss, so the loss can be set off this year."
+          ],
+          "notes": [
+            "A filed return is only compared with; it never changes Flow's figures."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "employer",
+      "group": "employer",
+      "name": "Your employer's payroll",
+      "url": "",
+      "login": "There is no public site for these. They come from your employer, usually through the payroll or HR portal.",
+      "always": true,
+      "documents": [
+        {
+          "name": "Form 16 (Part A and Part B) and Form 12BA",
+          "for": [
+            "salary",
+            "taxes_paid",
+            "deductions"
+          ],
+          "match": [
+            "form 16",
+            "12BA"
+          ],
+          "steps": [
+            "Download them from your payroll or HR portal, or ask payroll for them.",
+            "If you changed jobs during the year, get a Form 16 from each employer."
+          ],
+          "notes": [
+            "Employers must issue Form 16 by 15 June after the year ends.",
+            "Form 12BA lists perquisites, such as shares from an employee stock plan, and is needed when there are any."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zerodha",
+      "group": "brokers",
+      "name": "Zerodha Console",
+      "url": "https://console.zerodha.com/",
+      "login": "Log in with your Kite user ID, password and the second factor.",
+      "match": [
+        "zerodha"
+      ],
+      "documents": [
+        {
+          "name": "Tax P&L",
+          "for": [
+            "capital_gains",
+            "books",
+            "other_sources"
+          ],
+          "match": [
+            "zerodha.*tax p&l",
+            "zerodha.*p&l"
+          ],
+          "steps": [
+            "Open Reports › Tax P&L.",
+            "Choose the period {fy_start} to {fy_end}.",
+            "Download it as Excel."
+          ],
+          "notes": [
+            "It lists each sale with its buy and sell values and the charges. Intraday and F&O, which are business income, are on their own sheets.",
+            "If Reports also offers a dividends report for the year, download that too, for Other sources."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "icicidirect",
+      "group": "brokers",
+      "name": "ICICI Direct",
+      "url": "https://www.icicidirect.com/",
+      "login": "Log in with your ICICI Direct user ID, password and OTP.",
+      "match": [
+        "icici ?direct"
+      ],
+      "documents": [
+        {
+          "name": "Capital gains statement",
+          "for": [
+            "capital_gains"
+          ],
+          "match": [
+            "icici ?direct.*capital"
+          ],
+          "steps": [
+            "Look under Portfolio or Reports for the capital gain statement for equity.",
+            "Choose the financial year {fy}.",
+            "Download it, as Excel if offered."
+          ],
+          "notes": [
+            "If you also hold mutual funds through ICICI Direct, download their capital gain statement as well, or get one from CAMS below."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nsdl",
+      "group": "brokers",
+      "name": "NSDL or CDSL consolidated account statement (CAS)",
+      "url": "https://nsdlcas.nsdl.com/",
+      "login": "The CAS arrives by email each month at the address registered with your demat accounts. CDSL account holders get theirs from CDSL in the same way.",
+      "match": [
+        "\\bNSDL\\b",
+        "\\bCDSL\\b",
+        "consolidated account statement"
+      ],
+      "documents": [
+        {
+          "name": "CAS for March {fy_end_year}",
+          "for": [
+            "capital_gains",
+            "other_sources",
+            "assets_liabilities"
+          ],
+          "match": [
+            "\\bNSDL\\b",
+            "\\bCDSL\\b",
+            "consolidated account statement"
+          ],
+          "steps": [
+            "Find the CAS email for March {fy_end_year} in your inbox and save the PDF.",
+            "If you cannot find it, request one on the NSDL CAS site, or on CDSL's site if your demat is with CDSL."
+          ],
+          "notes": [
+            "The PDF is usually protected with your PAN in capital letters. Flow tries that by itself.",
+            "It shows holdings on 31 March and corporate actions such as bonus and split, which matter when total income is above ₹50 lakh."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cams",
+      "group": "funds",
+      "name": "CAMS mutual fund statement",
+      "url": "https://www.camsonline.com/",
+      "login": "No login: the statement is emailed to the address registered with your funds.",
+      "match": [
+        "\\bCAMS\\b",
+        "kfintech",
+        "mutual fund.*(statement|capital)"
+      ],
+      "documents": [
+        {
+          "name": "Capital gains statement for mutual funds",
+          "for": [
+            "capital_gains"
+          ],
+          "match": [
+            "\\bCAMS\\b",
+            "kfintech",
+            "mutual fund.*capital"
+          ],
+          "steps": [
+            "On the CAMS site, find the investor statements and choose the capital gains statement covering CAMS and KFintech funds.",
+            "Choose the financial year {fy} and set a password for the file.",
+            "Save the PDF from the email when it arrives."
+          ],
+          "notes": [
+            "Set the password to your PAN in capital letters: Flow tries that by itself. Any other password, Flow cannot open."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "merrill",
+      "group": "foreign",
+      "name": "Merrill (Benefits OnLine)",
+      "url": "https://www.benefits.ml.com/",
+      "login": "Log in with your Benefits OnLine user ID, password and the code sent to you.",
+      "match": [
+        "merrill",
+        "benefits\\.ml"
+      ],
+      "documents": [
+        {
+          "name": "Stock award vest confirmations",
+          "for": [
+            "salary",
+            "foreign_special"
+          ],
+          "match": [
+            "vest confirmation",
+            "release confirmation",
+            "\\bRSU\\b"
+          ],
+          "steps": [
+            "Look in the stock plan's history or confirmations for each vest (release) during {fy_start} to {fy_end}.",
+            "Download the confirmation for every vest."
+          ],
+          "notes": [
+            "Each vest's value on the vest date is salary, already in Form 12BA. The confirmations give the dates and prices behind it."
+          ]
+        },
+        {
+          "name": "Brokerage statements",
+          "for": [
+            "foreign_special",
+            "capital_gains",
+            "other_sources"
+          ],
+          "match": [
+            "merrill.*statement"
+          ],
+          "steps": [
+            "Open the statements section and download every statement covering January to December {cy}.",
+            "Also download those covering {fy_start} to {fy_end}, if any are not already among them."
+          ],
+          "notes": [
+            "Schedule FA reports foreign holdings for the calendar year {cy}, not the financial year, so both periods are needed."
+          ]
+        },
+        {
+          "name": "Form 1042-S",
+          "for": [
+            "foreign_special",
+            "other_sources"
+          ],
+          "match": [
+            "1042-?S"
+          ],
+          "steps": [
+            "Open the tax documents section and download Form 1042-S for {cy}."
+          ],
+          "notes": [
+            "It shows US tax withheld on dividends, which can be claimed as relief. It is issued by 15 March."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "indmoney",
+      "group": "foreign",
+      "name": "INDmoney (US stocks)",
+      "url": "https://www.indmoney.com/",
+      "login": "Log in with your registered mobile number or email.",
+      "match": [
+        "indmoney"
+      ],
+      "documents": [
+        {
+          "name": "Tax report for US stocks",
+          "for": [
+            "foreign_special",
+            "capital_gains",
+            "other_sources"
+          ],
+          "match": [
+            "indmoney"
+          ],
+          "steps": [
+            "Look under Reports, or in your profile, for the tax report for US stocks.",
+            "Download the report for the financial year {fy}.",
+            "If a statement for the calendar year {cy} is offered, download that too, for Schedule FA."
+          ],
+          "notes": []
+        }
+      ]
+    },
+    {
+      "id": "sbi",
+      "group": "banks",
+      "name": "State Bank of India",
+      "url": "https://www.onlinesbi.sbi/",
+      "login": "Log in to SBI internet banking with your username, password and OTP.",
+      "match": [
+        "state bank",
+        "\\bSBI\\b"
+      ],
+      "bank": true
+    },
+    {
+      "id": "axis",
+      "group": "banks",
+      "name": "Axis Bank",
+      "url": "https://www.axisbank.com/",
+      "login": "Log in to Axis internet banking from the Login button on the bank's site.",
+      "match": [
+        "axis bank"
+      ],
+      "bank": true
+    },
+    {
+      "id": "icicibank",
+      "group": "banks",
+      "name": "ICICI Bank",
+      "url": "https://www.icicibank.com/",
+      "login": "Log in to ICICI internet banking from the Login button on the bank's site.",
+      "match": [
+        "icici bank"
+      ],
+      "bank": true
+    },
+    {
+      "id": "hdfc",
+      "group": "banks",
+      "name": "HDFC Bank",
+      "url": "https://www.hdfcbank.com/",
+      "login": "Log in to HDFC NetBanking from the Login button on the bank's site.",
+      "match": [
+        "hdfc bank"
+      ],
+      "bank": true
+    }
+  ],
+  "bank_documents": [
+    {
+      "name": "Account statement for the year",
+      "for": [
+        "other_sources",
+        "general",
+        "books"
+      ],
+      "match": [
+        "statement"
+      ],
+      "steps": [
+        "Open the account statement, usually under My Accounts.",
+        "Choose the period {fy_start} to {fy_end}.",
+        "Download it, as Excel if offered, otherwise as PDF. One file per account."
+      ],
+      "notes": [
+        "It shows savings interest and dividends received, and gives the account details for the refund.",
+        "If the PDF is password-protected with the bank's own rule, download the Excel version, or a PDF without a password, if the bank offers one. Flow cannot open other passwords."
+      ]
+    },
+    {
+      "name": "Interest certificate (only if you hold fixed or recurring deposits)",
+      "for": [
+        "other_sources",
+        "taxes_paid"
+      ],
+      "match": [
+        "interest certificate"
+      ],
+      "steps": [
+        "Look for the interest certificate or TDS certificate, usually under certificates or service requests.",
+        "Choose the financial year {fy} and download it."
+      ],
+      "notes": []
+    }
+  ]
+}

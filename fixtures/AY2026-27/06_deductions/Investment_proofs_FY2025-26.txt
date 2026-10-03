@@ -1,0 +1,40 @@
+CONSOLIDATED INVESTMENT AND DEDUCTION PROOFS - FY 2025-26
+Assessee: ASHA SAMPLE, PAN ABCDE1234F
+
+--------------------------------------------------------------------------
+SECTION 80C
+--------------------------------------------------------------------------
+Axis Long Term Equity Fund (ELSS), folio 91002441
+  Invested 14-05-2025                                            Rs 1,50,000
+Public Provident Fund, account 3801992, SBI Koramangala
+  Deposited 28-03-2026                                           Rs   50,000
+Life Insurance Corporation policy 900000001, annual premium
+  Paid 09-09-2025                                                Rs   34,000
+
+--------------------------------------------------------------------------
+SECTION 80CCD(1B) - NATIONAL PENSION SYSTEM
+--------------------------------------------------------------------------
+NPS Tier-I PRAN 110000000001, contribution 21-03-2026            Rs   50,000
+
+--------------------------------------------------------------------------
+SECTION 80D - MEDICAL INSURANCE
+--------------------------------------------------------------------------
+Star Health, policy SH-2288401, self and spouse (both under 60)
+  Premium paid 03-06-2025, mode: net banking                     Rs   28,000
+Niva Bupa, policy NB-7741220, parents (father aged 71)
+  Premium paid 03-06-2025, mode: net banking                     Rs   46,000
+
+--------------------------------------------------------------------------
+SECTION 80G - DONATIONS
+--------------------------------------------------------------------------
+Receipt 2025-26/1184 dated 11-01-2026
+  Donee   : AKSHAYA PATRA FOUNDATION
+  PAN     : AAATA0000A
+  ARN     : AAATA0000AF2025001
+  Mode    : Cheque
+  Amount  : Rs 25,000
+  Eligible for deduction at 50% without qualifying limit
+
+--------------------------------------------------------------------------
+Note: Employer PF contribution of Rs 1,04,000 already appears in Form 16 and
+is not claimed again here.

@@ -1,0 +1,33 @@
+# Nothing personal lives in this repository. Profiles, documents, results,
+# exchange rates, the conversion cache and this machine's token are all kept
+# in the Flow home, outside it (see server/paths.py). What is ignored below is
+# only what a machine produces while running the program.
+
+# ─── This machine ────────────────────────────────────────────────────
+# Points this clone at a Flow home other than the default.
+flow.local.json
+
+# ─── Local runtime ───────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+*.log
+web/_probe.html
+
+# ─── Scratch ─────────────────────────────────────────────────────────
+tmp/
+*.tmp
+
+# Regenerable fixture run output
+fixtures/_data/
+
+# ─── Where personal files used to be kept ────────────────────────────
+# Early versions kept them beside the code. Listed so that such a folder, if it
+# ever reappears, can never be committed. tools/check_private.py is the
+# second guard: it checks file contents, not just names.
+source_data/
+data/
+.derived/
+.agent/
+config/profiles.json
+config/fx_rates.json

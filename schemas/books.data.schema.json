@@ -1,0 +1,363 @@
+{
+  "title": "ITR-3 Part A-BS, Part A-P&L and Part A-OI (Books of account) - data",
+  "description": "The balance sheet, profit and loss account and other information, in the ITR-3 form's own structure. Each line carries the form's item number so a filled tab reads across to the utility without translation.",
+  "type": "object",
+  "required": [
+    "books_maintained",
+    "profit_and_loss"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "books_maintained": {
+      "type": "boolean",
+      "description": "Part A-GEN: whether books are maintained under section 44AA. If false, only the no-accounts case section 61 of Part A-P&L applies."
+    },
+    "nature_of_business": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "description"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The department's business/profession code"
+          },
+          "description": {
+            "type": "string"
+          },
+          "trade_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "balance_sheet": {
+      "type": "object",
+      "description": "Part A-BS as at the last day of the year.",
+      "additionalProperties": false,
+      "properties": {
+        "proprietors_fund": {
+          "$ref": "#/$defs/money",
+          "description": "A.1"
+        },
+        "reserves_and_surplus": {
+          "$ref": "#/$defs/money",
+          "description": "A.2"
+        },
+        "secured_loans": {
+          "$ref": "#/$defs/money",
+          "description": "A.3(a)"
+        },
+        "unsecured_loans": {
+          "$ref": "#/$defs/money",
+          "description": "A.3(b)"
+        },
+        "advances": {
+          "$ref": "#/$defs/money",
+          "description": "A.4"
+        },
+        "current_liabilities_and_provisions": {
+          "$ref": "#/$defs/money",
+          "description": "A.5"
+        },
+        "total_liabilities": {
+          "$ref": "#/$defs/money",
+          "description": "A.6"
+        },
+        "fixed_assets": {
+          "$ref": "#/$defs/money",
+          "description": "B.1"
+        },
+        "capital_work_in_progress": {
+          "$ref": "#/$defs/money",
+          "description": "B.2"
+        },
+        "investments": {
+          "$ref": "#/$defs/money",
+          "description": "B.3"
+        },
+        "current_assets_loans_advances": {
+          "$ref": "#/$defs/money",
+          "description": "B.4"
+        },
+        "miscellaneous_expenditure": {
+          "$ref": "#/$defs/money",
+          "description": "B.5"
+        },
+        "total_assets": {
+          "$ref": "#/$defs/money",
+          "description": "B.6"
+        }
+      }
+    },
+    "profit_and_loss": {
+      "type": "object",
+      "description": "Part A-P&L. Trading account, then the profit and loss account proper.",
+      "additionalProperties": false,
+      "properties": {
+        "revenue_from_operations": {
+          "$ref": "#/$defs/money",
+          "description": "1"
+        },
+        "other_income": {
+          "$ref": "#/$defs/money",
+          "description": "2"
+        },
+        "total_revenue": {
+          "$ref": "#/$defs/money",
+          "description": "3"
+        },
+        "purchases": {
+          "$ref": "#/$defs/money",
+          "description": "6"
+        },
+        "change_in_inventory": {
+          "$ref": "#/$defs/money",
+          "description": "7"
+        },
+        "employee_benefit_expense": {
+          "$ref": "#/$defs/money",
+          "description": "9"
+        },
+        "finance_cost": {
+          "$ref": "#/$defs/money",
+          "description": "10"
+        },
+        "depreciation_in_books": {
+          "$ref": "#/$defs/money",
+          "description": "11 - book depreciation. Income-tax depreciation is computed separately on the Depreciation tab and the difference is an adjustment in Schedule BP."
+        },
+        "other_expenses": {
+          "$ref": "#/$defs/money",
+          "description": "12 to 44"
+        },
+        "total_expenses": {
+          "$ref": "#/$defs/money",
+          "description": "45"
+        },
+        "profit_before_tax": {
+          "$ref": "#/$defs/money",
+          "description": "47"
+        },
+        "net_profit": {
+          "$ref": "#/$defs/money",
+          "description": "53"
+        }
+      }
+    },
+    "no_accounts_case": {
+      "type": "object",
+      "description": "Part A-P&L item 61, where books are not maintained.",
+      "additionalProperties": false,
+      "properties": {
+        "gross_receipts": {
+          "$ref": "#/$defs/money"
+        },
+        "gross_profit": {
+          "$ref": "#/$defs/money"
+        },
+        "expenses": {
+          "$ref": "#/$defs/money"
+        },
+        "net_profit": {
+          "$ref": "#/$defs/money"
+        }
+      }
+    },
+    "speculative": {
+      "type": "object",
+      "description": "Intraday equity is a speculative business and its result is kept separate all the way through: speculative losses set off only against speculative income.",
+      "additionalProperties": false,
+      "properties": {
+        "turnover": {
+          "$ref": "#/$defs/money"
+        },
+        "profit_or_loss": {
+          "$ref": "#/$defs/money"
+        },
+        "expenses": {
+          "$ref": "#/$defs/money",
+          "description": "The total of the charges where the statement itself states one. Leave it out when it does not: the charges[] rows are summed in code."
+        },
+        "charges": {
+          "type": "array",
+          "description": "Every charge on this business, one row per head exactly as the statement names it: brokerage, exchange transaction charges, STT, stamp duty, SEBI fees, GST, clearing charges. Do NOT add them up — code does that. A broker's realised profit is usually stated GROSS of these, and they are deductible business expenses, so leaving them out overstates the income.",
+          "items": {
+            "type": "object",
+            "required": [
+              "head",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "head": {
+                "type": "string",
+                "description": "The statement's own name for the charge."
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Anything doubtful about it: whether it is already netted off the profit, or whether it belongs to another business."
+              }
+            }
+          }
+        }
+      }
+    },
+    "derivatives": {
+      "type": "object",
+      "description": "F&O is a non-speculative business. Turnover here decides whether section 44AB audit applies.",
+      "additionalProperties": false,
+      "properties": {
+        "turnover": {
+          "$ref": "#/$defs/money"
+        },
+        "profit_or_loss": {
+          "$ref": "#/$defs/money"
+        },
+        "expenses": {
+          "$ref": "#/$defs/money",
+          "description": "The total of the charges where the statement itself states one. Leave it out when it does not: the charges[] rows are summed in code."
+        },
+        "charges": {
+          "type": "array",
+          "description": "Every charge on this business, one row per head exactly as the statement names it: brokerage, exchange transaction charges, STT, stamp duty, SEBI fees, GST, clearing charges. Do NOT add them up — code does that. A broker's realised profit is usually stated GROSS of these, and they are deductible business expenses, so leaving them out overstates the income.",
+          "items": {
+            "type": "object",
+            "required": [
+              "head",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "head": {
+                "type": "string",
+                "description": "The statement's own name for the charge."
+              },
+              "amount": {
+                "$ref": "#/$defs/money"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Anything doubtful about it: whether it is already netted off the profit, or whether it belongs to another business."
+              }
+            }
+          }
+        }
+      }
+    },
+    "other_information": {
+      "type": "object",
+      "description": "Part A-OI: the adjustments that carry into Schedule BP.",
+      "additionalProperties": false,
+      "properties": {
+        "method_of_accounting": {
+          "enum": [
+            "mercantile",
+            "cash",
+            null
+          ]
+        },
+        "disallowance_43B": {
+          "$ref": "#/$defs/money",
+          "description": "OI 10 - unpaid statutory dues"
+        },
+        "disallowance_40a": {
+          "$ref": "#/$defs/money",
+          "description": "OI 8 - amounts disallowed for want of TDS"
+        },
+        "disallowance_40A3": {
+          "$ref": "#/$defs/money",
+          "description": "OI 9 - cash payments over the limit"
+        },
+        "amounts_credited_not_income": {
+          "$ref": "#/$defs/money",
+          "description": "OI 6"
+        }
+      }
+    },
+    "other_expenses_of_business": {
+      "type": "array",
+      "description": "Business expenses that belong to no single segment: depository (DP) charges, annual maintenance, pledge charges, platform subscriptions, interest on money borrowed for the business.",
+      "items": {
+        "type": "object",
+        "required": [
+          "head",
+          "amount"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "head": {
+            "type": "string",
+            "description": "The statement's own name for the charge."
+          },
+          "amount": {
+            "$ref": "#/$defs/money"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Anything doubtful about it: whether it is already netted off the profit, or whether it belongs to another business."
+          }
+        }
+      }
+    },
+    "assets_acquired": {
+      "type": "array",
+      "description": "Capital items found on the invoices: a laptop, a monitor, a phone, a desk. These are not expenses -- relief comes through depreciation under section 32 -- so they are reported here instead of in other_expenses_of_business, and the depreciation itself is computed, not stated.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "description",
+          "invoice_date",
+          "cost"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "The item as the invoice names it."
+          },
+          "invoice_date": {
+            "type": "string",
+            "description": "ISO date on the invoice. It may fall in an earlier previous year; report it as it is."
+          },
+          "put_to_use_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date the asset was first used for the business, if the documents say. Leave null and the invoice date is used."
+          },
+          "cost": {
+            "$ref": "#/$defs/money"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The invoice file this came from."
+          }
+        }
+      }
+    }
+  }
+}

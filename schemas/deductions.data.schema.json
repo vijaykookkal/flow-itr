@@ -1,0 +1,32 @@
+{
+  "title": "ITR-3 Schedule VI-A (Deductions) - data",
+  "type": "object",
+  "required": ["claims", "total_claimed"],
+  "additionalProperties": false,
+  "properties": {
+    "claims": {
+      "type": "array",
+      "description": "One row per proof document. 'amount' is what the proof evidences; the statutory ceiling is applied by engine/, never here.",
+      "items": {
+        "type": "object",
+        "required": ["section", "description", "amount"],
+        "additionalProperties": false,
+        "properties": {
+          "section": {
+            "enum": ["80C", "80CCC", "80CCD(1)", "80CCD(1B)", "80CCD(2)", "80D", "80DD", "80DDB", "80E", "80EEA", "80G", "80GG", "80GGA", "80GGC", "80TTA", "80TTB", "80U"]
+          },
+          "description": { "type": "string" },
+          "payee": { "type": ["string", "null"] },
+          "payee_pan": { "type": ["string", "null"] },
+          "donation_arn": { "type": ["string", "null"] },
+          "mode": { "type": ["string", "null"] },
+          "amount": { "$ref": "#/$defs/money" }
+        }
+      }
+    },
+    "total_claimed": {
+      "$ref": "#/$defs/money",
+      "description": "Sum of claims before statutory caps. engine/ computes the allowable figure."
+    }
+  }
+}

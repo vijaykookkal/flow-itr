@@ -1,0 +1,147 @@
+{
+  "title": "ITR-3 Part A-GEN (General information) - data",
+  "description": "Identity and bank accounts as the documents state them, and the filing choices, which no document states and a person settles.",
+  "type": "object",
+  "required": [
+    "assessee"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "assessee": {
+      "type": "object",
+      "required": [
+        "name",
+        "pan"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "pan": {
+          "type": "string"
+        },
+        "date_of_birth": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "aadhaar_last_four": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Last four digits only; the full number is not kept here"
+        },
+        "address": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "email": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mobile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "found_in": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The document the identity was taken from"
+        }
+      }
+    },
+    "filing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "return_section": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "139(1) on time, 139(4) belated, 139(5) revised"
+        },
+        "original_ack_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "opting_out_of_115BAC": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Requires Form 10-IEA where there is business income"
+        },
+        "form_10IEA_ack": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "portuguese_civil_code_5A": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "bank_accounts": {
+      "type": "array",
+      "description": "All accounts held; one must be nominated for any refund.",
+      "items": {
+        "type": "object",
+        "required": [
+          "ifsc",
+          "account_number",
+          "bank_name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ifsc": {
+            "type": "string"
+          },
+          "account_number": {
+            "type": "string"
+          },
+          "bank_name": {
+            "type": "string"
+          },
+          "account_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "for_refund": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "found_in": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The document that shows this account"
+          }
+        }
+      }
+    }
+  }
+}

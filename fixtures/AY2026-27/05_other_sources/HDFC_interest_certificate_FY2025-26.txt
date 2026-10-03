@@ -1,0 +1,26 @@
+HDFC BANK LIMITED
+INTEREST CERTIFICATE FOR THE FINANCIAL YEAR 2025-26 (AY 2026-27)
+
+Customer Name : ASHA SAMPLE
+PAN           : ABCDE1234F
+Branch        : Indiranagar, Bengaluru
+
+--------------------------------------------------------------------------
+SAVINGS ACCOUNT INTEREST
+--------------------------------------------------------------------------
+Account Number        50100XXXXXX234
+Interest credited during FY 2025-26                             Rs   18,450
+Tax deducted at source                                          Rs        0
+
+--------------------------------------------------------------------------
+FIXED DEPOSIT INTEREST
+--------------------------------------------------------------------------
+Deposit Number        00601XXXXXX881
+Interest accrued / credited during FY 2025-26                   Rs 1,24,300
+Tax deducted at source under section 194A                       Rs   12,430
+
+--------------------------------------------------------------------------
+Total interest paid / credited                                  Rs 1,42,750
+Total tax deducted at source                                    Rs   12,430
+
+This is a computer generated statement and does not require a signature.

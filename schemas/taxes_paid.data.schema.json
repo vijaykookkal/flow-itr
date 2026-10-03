@@ -1,0 +1,70 @@
+{
+  "title": "ITR-3 Schedules TDS1 / TDS2 / TDS3 / TCS / IT (Taxes Paid) - data",
+  "type": "object",
+  "required": ["tds_salary", "tds_other", "taxes_paid_challans", "total_taxes_paid"],
+  "additionalProperties": false,
+  "properties": {
+    "tds_salary": {
+      "type": "array",
+      "description": "Schedule TDS1 - TDS on salary, one row per employer TAN.",
+      "items": {
+        "type": "object",
+        "required": ["deductor", "tan", "tds"],
+        "additionalProperties": false,
+        "properties": {
+          "deductor": { "type": "string" },
+          "tan": { "type": "string" },
+          "income_paid": { "$ref": "#/$defs/money" },
+          "tds": { "$ref": "#/$defs/money" }
+        }
+      }
+    },
+    "tds_other": {
+      "type": "array",
+      "description": "Schedule TDS2/TDS3 - TDS on income other than salary.",
+      "items": {
+        "type": "object",
+        "required": ["deductor", "tds"],
+        "additionalProperties": false,
+        "properties": {
+          "deductor": { "type": "string" },
+          "tan_or_pan": { "type": ["string", "null"] },
+          "section": { "type": ["string", "null"] },
+          "gross_amount": { "$ref": "#/$defs/money" },
+          "head": { "type": ["string", "null"] },
+          "tds": { "$ref": "#/$defs/money" }
+        }
+      }
+    },
+    "tcs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["collector", "tcs"],
+        "additionalProperties": false,
+        "properties": {
+          "collector": { "type": "string" },
+          "tan": { "type": ["string", "null"] },
+          "tcs": { "$ref": "#/$defs/money" }
+        }
+      }
+    },
+    "taxes_paid_challans": {
+      "type": "array",
+      "description": "Schedule IT - advance tax and self-assessment tax challans.",
+      "items": {
+        "type": "object",
+        "required": ["bsr_code", "date_of_deposit", "challan_no", "amount"],
+        "additionalProperties": false,
+        "properties": {
+          "bsr_code": { "type": "string" },
+          "date_of_deposit": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+          "challan_no": { "type": "string" },
+          "kind": { "enum": ["advance_tax", "self_assessment"] },
+          "amount": { "$ref": "#/$defs/money" }
+        }
+      }
+    },
+    "total_taxes_paid": { "$ref": "#/$defs/money" }
+  }
+}

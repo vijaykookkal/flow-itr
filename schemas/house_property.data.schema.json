@@ -1,0 +1,66 @@
+{
+  "title": "ITR-3 Schedule HP (Income from House Property) - data",
+  "description": "One entry per property, in Schedule HP's own item order. The annual value computation (a to e) and the section 24 deductions are represented as the form states them, so a filled tab can be read straight across to the utility.",
+  "type": "object",
+  "required": ["properties", "total_income_from_hp"],
+  "additionalProperties": false,
+  "properties": {
+    "properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["occupancy", "address"],
+        "additionalProperties": false,
+        "properties": {
+          "occupancy": {
+            "description": "Item 1: self-occupied, let out, or deemed let out. Self-occupied has nil annual value and caps interest at Rs 2 lakh.",
+            "enum": ["self_occupied", "let_out", "deemed_let_out"]
+          },
+          "address": { "type": "string" },
+          "co_owned": { "type": ["boolean", "null"] },
+          "ownership_percent": { "type": ["number", "null"] },
+          "co_owners": {
+            "type": "array",
+            "description": "Item 1(a): name, PAN and share of each other co-owner. Mandatory when co-owned.",
+            "items": {
+              "type": "object",
+              "required": ["name", "share_percent"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "pan": { "type": ["string", "null"] },
+                "share_percent": { "type": "number" }
+              }
+            }
+          },
+          "tenants": {
+            "type": "array",
+            "description": "Item 1(b): tenant name and PAN/TAN, required where TDS under 194-I applies.",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "pan_or_tan": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "rent_received_or_receivable": { "$ref": "#/$defs/money", "description": "Item 1(a)" },
+          "unrealised_rent": { "$ref": "#/$defs/money", "description": "Item 1(b)" },
+          "municipal_tax_paid": { "$ref": "#/$defs/money", "description": "Item 1(c) - only if actually paid in the year" },
+          "annual_value": { "$ref": "#/$defs/money", "description": "Item 1(d), stated by the document if it states one" },
+          "standard_deduction_30pc": { "$ref": "#/$defs/money", "description": "Item 1(e) - 30% of annual value. engine/ computes it" },
+          "interest_on_borrowed_capital": {
+            "$ref": "#/$defs/money",
+            "description": "Item 1(f), section 24(b). Capped at Rs 2 lakh for self-occupied; uncapped for let out, though the set-off against other heads is capped at Rs 2 lakh."
+          },
+          "arrears_received_less_30pc": { "$ref": "#/$defs/money", "description": "Item 1(g), section 25A" },
+          "income_from_property": { "$ref": "#/$defs/money", "description": "Item 1(h), as stated" }
+        }
+      }
+    },
+    "pass_through_loss": { "$ref": "#/$defs/money" },
+    "total_income_from_hp": { "$ref": "#/$defs/money" }
+  }
+}

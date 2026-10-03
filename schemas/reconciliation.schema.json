@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Reconciliation",
+  "description": "What the department and other summary documents say about a schedule, mapped onto the figures this return computes. The reported side is read from the documents; our side is computed in code from the ledger and is never supplied by the engine.",
+  "type": "object",
+  "required": [
+    "lines",
+    "questions"
+  ],
+  "properties": {
+    "lines": {
+      "type": "array",
+      "description": "One entry per figure a summary document states for this schedule.",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "category",
+          "reported",
+          "measure",
+          "relation",
+          "why"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "The document the figure was read from, as listed."
+          },
+          "category": {
+            "type": "string",
+            "description": "The document's own name for the line, copied: 'Sale of securities and units of mutual fund', 'SFT-017 Purchase of securities'."
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The information code where the document gives one, e.g. SFT-015."
+          },
+          "reported": {
+            "$ref": "#/$defs/money",
+            "description": "The amount as the document states it, with its citation."
+          },
+          "counterparty": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The reporting source named against the line, where there is one."
+          },
+          "measure": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The key of the computed measure this line should equal, from the list given. Null when nothing in this schedule is comparable -- a purchase figure, or a line belonging to another schedule -- and then `why` must say so."
+          },
+          "why": {
+            "type": "string",
+            "description": "Why this line maps to that measure, or why it maps to none. Where the two differ, what in the documents accounts for it."
+          },
+          "belongs_to": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When the line belongs to a different schedule, name it: other_sources, salary, taxes_paid."
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "equals",
+              "part_of",
+              "none"
+            ],
+            "description": "equals: this one line should equal the whole measure. part_of: it is one component, and all the components of that measure are compared together against it -- use this for a per-source or per-broker figure. none: nothing here is comparable, and `measure` must be null."
+          },
+          "accounted_by": {
+            "type": "array",
+            "description": "Where the reported figure and the computed one differ, the items that make up the difference, each with its amount signed as (reported minus ours). They must add up to the difference: code checks the arithmetic, and a difference whose parts do not add up is reported as unexplained however well argued.",
+            "items": {
+              "type": "object",
+              "required": [
+                "what",
+                "amount"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "what": {
+                  "type": "string",
+                  "description": "What this part of the difference is, and the evidence for it."
+                },
+                "amount": {
+                  "type": "integer",
+                  "description": "Signed rupees: positive where the reported figure is the larger."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Anything a person must decide, including a difference you cannot account for."
+    },
+    "$defs": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "money": {
+      "type": "object",
+      "required": [
+        "amount"
+      ],
+      "properties": {
+        "amount": {
+          "type": "integer"
+        },
+        "cite": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

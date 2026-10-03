@@ -1,0 +1,71 @@
+{
+  "title": "ITR-3 Schedules DPM, DOA, DEP and DCG (Depreciation) - data",
+  "description": "Block-wise depreciation under the Income-tax Act, which is computed on blocks of assets and is independent of the depreciation charged in the books.",
+  "type": "object",
+  "required": [
+    "blocks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schedule",
+          "rate_percent",
+          "opening_wdv"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "schedule": {
+            "enum": [
+              "DPM",
+              "DOA"
+            ],
+            "description": "DPM for plant and machinery, DOA for land, building, furniture and intangibles"
+          },
+          "description": {
+            "type": "string"
+          },
+          "rate_percent": {
+            "type": "number",
+            "description": "Block rate: 15, 30, 40 for DPM; 10, 40 for DOA"
+          },
+          "opening_wdv": {
+            "$ref": "#/$defs/money",
+            "description": "Column 1, written down value at the start of the year"
+          },
+          "additions_180_days_or_more": {
+            "$ref": "#/$defs/money",
+            "description": "Column 3, eligible for full-year depreciation"
+          },
+          "additions_less_than_180_days": {
+            "$ref": "#/$defs/money",
+            "description": "Column 4, eligible for half the rate"
+          },
+          "deductions": {
+            "$ref": "#/$defs/money",
+            "description": "Column 5, sale proceeds of assets sold from the block"
+          },
+          "depreciation_allowable": {
+            "$ref": "#/$defs/money",
+            "description": "Computed by engine/, not extracted"
+          },
+          "closing_wdv": {
+            "$ref": "#/$defs/money",
+            "description": "Carried forward as next year opening WDV"
+          },
+          "capital_gain_on_block": {
+            "$ref": "#/$defs/money",
+            "description": "Schedule DCG, short-term under section 50 where the block is exhausted"
+          }
+        }
+      }
+    },
+    "unabsorbed_depreciation_brought_forward": {
+      "$ref": "#/$defs/money",
+      "description": "Schedule UD, carried forward indefinitely"
+    }
+  }
+}

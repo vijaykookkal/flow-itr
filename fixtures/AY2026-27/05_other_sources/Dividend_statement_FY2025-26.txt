@@ -1,0 +1,21 @@
+ZENITH SECURITIES LIMITED
+CONSOLIDATED DIVIDEND STATEMENT - FINANCIAL YEAR 2025-26
+
+Client Code : ZS0099214
+Name        : ASHA SAMPLE
+PAN         : ABCDE1234F
+
+--------------------------------------------------------------------------
+Date        Security                        Gross Dividend      TDS u/s 194
+--------------------------------------------------------------------------
+22-08-2025  RELIANCE INDUSTRIES LTD               8,400               840
+19-07-2025  HDFC BANK LTD                         5,200               520
+30-01-2026  INFOSYS LTD                           6,750               675
+--------------------------------------------------------------------------
+            TOTAL                                20,350             2,035
+--------------------------------------------------------------------------
+
+Note: An interest credit of Rs 3,120 was received on 12-02-2026 against the
+delayed income-tax refund for AY 2024-25. It is shown here for completeness
+only and is not a dividend.
+`

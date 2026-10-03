@@ -1,0 +1,45 @@
+FORM 26AS
+ANNUAL TAX STATEMENT UNDER SECTION 203AA
+
+Permanent Account Number (PAN) : ABCDE1234F
+Name of Assessee               : ASHA SAMPLE
+Assessment Year                : 2026-27
+Financial Year                 : 2025-26
+
+==========================================================================
+PART I - DETAILS OF TAX DEDUCTED AT SOURCE (SALARY)
+==========================================================================
+Name of Deductor                      TAN          Amount Paid    Tax Deducted
+ACME TECHNOLOGIES PRIVATE LIMITED     BLRA12345F    26,44,500        4,12,000
+--------------------------------------------------------------------------
+                                                   TOTAL            4,12,000
+
+==========================================================================
+PART II - DETAILS OF TAX DEDUCTED AT SOURCE (OTHER THAN SALARY)
+==========================================================================
+Deductor                       TAN          Section   Amount Paid   Tax Deducted
+HDFC BANK LIMITED              MUMH03456B   194A        1,24,300        12,430
+RELIANCE INDUSTRIES LTD        MUMR01234C   194            8,400           840
+HDFC BANK LTD                  MUMH03456B   194            5,200           520
+INFOSYS LTD                    BLRI00789D   194            6,750           675
+--------------------------------------------------------------------------
+                                                          TOTAL         14,465
+
+==========================================================================
+PART III - DETAILS OF TAX PAID (OTHER THAN TDS OR TCS)
+==========================================================================
+BSR Code   Date of Deposit   Challan No   Type                     Amount
+0510308    15-09-2025        00234        Advance Tax            1,50,000
+0510308    15-12-2025        00871        Advance Tax            2,00,000
+0510308    14-03-2026        01192        Advance Tax            1,25,000
+--------------------------------------------------------------------------
+                                          TOTAL                  4,75,000
+
+==========================================================================
+SUMMARY
+==========================================================================
+Total TDS (salary)                                               4,12,000
+Total TDS (other than salary)                                      14,465
+Total advance tax and self-assessment tax                        4,75,000
+--------------------------------------------------------------------------
+TOTAL TAXES PAID                                                 9,01,465
