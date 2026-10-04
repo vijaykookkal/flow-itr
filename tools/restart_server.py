@@ -87,6 +87,14 @@ def main() -> int:
                   f"nothing was started, so the old server is still the one running")
             return 1
 
+    # With the old server gone, its files can move (versions before 0.3.1 kept
+    # them in a folder called flow), and the log then opens in the new place
+    # rather than holding a file open in the old one.
+    moved = paths.move_legacy_home()
+    if moved:
+        print(f"  {'moved' if moved['moved'] else 'NOT MOVED'} {moved['from']} -> {moved['to']}"
+              + ("" if moved["moved"] else f": {moved['error']}"))
+
     log = paths.state_dir() / "server.log"
     log.parent.mkdir(parents=True, exist_ok=True)
     handle = log.open("ab")

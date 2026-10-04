@@ -175,7 +175,7 @@ def get(name: str):
 def describe() -> list[dict]:
     """Every engine, with the models it offers and honest capability notes.
 
-    An engine is how Flow talks to a reader: a command-line tool, or Ollama's
+    An engine is how Flow ITR talks to a reader: a command-line tool, or Ollama's
     API on this computer. A model is the reader itself."""
     out = []
     for name, mod in registry().items():

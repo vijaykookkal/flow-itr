@@ -2464,7 +2464,7 @@ function homeCard() {
       el('p', {}, `This folder (chosen by ${home.source || 'the default'}) holds everything personal: the `
         + 'list of returns, looked-up exchange rates and each return’s documents and results. By '
         + `convention a return called X has a folder X, with its documents in X/${home.input_folder || 'documents'} `
-        + 'and everything Flow produces from them beside it. The documents can be kept elsewhere.'),
+        + 'and everything Flow ITR produces from them beside it. The documents can be kept elsewhere.'),
       el('p', {}, 'To keep it somewhere else, set the FLOW_HOME environment variable, or put a file '
         + 'called flow.local.json beside the program containing {"home": "D:/somewhere"}, and restart.'),
       el('p', {}, cloud.length
@@ -2476,13 +2476,14 @@ function homeCard() {
 
 /** A return's documents into a synced Drive folder, contents and all. */
 async function putOnDrive(p, drive) {
-  const base = `${drive.path}/Flow/${p.name}`;
+  // Each Flow app keeps to its own folder under Flow/ on the Drive.
+  const base = `${drive.path}/Flow/ITR/${p.name}`;
   if (!confirm(`Move the documents of "${p.name}" to ${drive.kind}?
 
 ${base}/${state.home.input_folder}
 
 ${drive.kind} will upload them to your Google account and keep them in step. `
-    + `Flow itself sends nothing anywhere. Wait for Drive to finish syncing before `
+    + `Flow ITR itself sends nothing anywhere. Wait for Drive to finish syncing before `
     + `working on another machine. The return’s own folder stays in the Flow home.`)) return;
   await profileAction({ action: 'move', id: p.id, field: 'source_dir',
                       target: `${base}/${state.home.input_folder}` });
@@ -2575,7 +2576,7 @@ function returnDetail(p, isActive, store) {
 
   // The name identifies the return and its folder is named after it, so the
   // folder sits under the name, read-only, saying where a new name moves it.
-  // Its results inside are Flow's business, unless an earlier version left
+  // Its results inside are Flow ITR's business, unless an earlier version left
   // them elsewhere and they need moving in.
   const folderNote = el('small', {});
   const showFolder = (name) => {
@@ -2972,12 +2973,12 @@ async function ensureSchema(id) {
 }
 
 /** The server's own code changed after it started. Reloading the page cannot
- *  help: until Flow is restarted, anything new answers "not found". */
+ *  help: until Flow ITR is restarted, anything new answers "not found". */
 function showRestartBanner() {
   if ($('#restart-banner')) return;
   $('#stale-banner')?.remove();
   document.body.prepend(el('div', { id: 'restart-banner', class: 'stale-banner', role: 'status' },
-    'Flow has been updated since it was started, so parts of this page may not work. Restart it to use the '
+    'Flow ITR has been updated since it was started, so parts of this page may not work. Restart it to use the '
     + 'changes: close its window (or press Ctrl+C in it), run flow.cmd again, then reload this page.'));
 }
 

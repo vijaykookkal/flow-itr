@@ -9,7 +9,7 @@
     "think": false
   },
   "time_limits_minutes": {
-    "_note": "How long one request to a reading engine may take before Flow ends it. A local model on a laptop processor is slow, so it gets longer. Stopping by hand is always possible from the page.",
+    "_note": "How long one request to a reading engine may take before Flow ITR ends it. A local model on a laptop processor is slow, so it gets longer. Stopping by hand is always possible from the page.",
     "claude": 30,
     "codex": 30,
     "ollama": 120

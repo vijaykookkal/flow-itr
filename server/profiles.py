@@ -32,6 +32,8 @@ results folder follows the return name so each return's output stays together.
 
 from __future__ import annotations
 
+import errno
+import os
 import re
 import shutil
 from datetime import datetime, timezone
@@ -136,7 +138,7 @@ INPUT_README = """Put every document for this return in this folder.
 Form 16, salary slips, broker and bank statements, the AIS, the TIS, Form 26AS,
 loan and insurance certificates, invoices for a business: whatever you were
 given for the year. Sub-folders are fine and nothing needs sorting by hand.
-Then open Flow, go to Documents and press "Sort documents again".
+Then open Flow ITR, go to Documents and press "Sort documents again".
 
 A date or period in a file name helps: HDFC_savings_2025-04_to_2026-03.pdf.
 This file is ignored; it is not read as a document.
@@ -463,7 +465,35 @@ def _move_folder(old, new) -> None:
     if new.exists():
         new.rmdir()                     # only ever empty: checked before anything moved
     new.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(old), str(new))
+    _relocate(old, new)
+
+
+def _relocate(src, dst) -> None:
+    """Move a file or folder without ever leaving it half in each place.
+
+    On one disk, a rename: it happens entirely or not at all, and a folder
+    holding a file that is open (results.xlsx in Excel) is refused, which is
+    the right answer. shutil.move instead falls back to copying when a rename
+    is refused, and then fails to delete the original halfway through, leaving
+    two partial folders. Only a move to another disk, where no rename is
+    possible, copies: all of it first, and the original goes only once the copy
+    is whole. If the original cannot all be removed, what is left is a spare;
+    the copy is the one in use."""
+    try:
+        os.rename(src, dst)
+        return
+    except OSError as exc:
+        if not (exc.errno == errno.EXDEV or getattr(exc, "winerror", None) == 17):
+            raise
+    if src.is_dir():
+        shutil.copytree(src, dst)
+        shutil.rmtree(src, ignore_errors=True)
+    else:
+        shutil.copy2(src, dst)
+        try:
+            src.unlink()
+        except OSError:
+            pass
 
 
 def _make_results_folder(profile: dict) -> None:
@@ -565,7 +595,7 @@ def _move_contents(old, new, target: str) -> None:
     for child in list(old.iterdir()):
         if child.resolve() == new.resolve():
             continue
-        shutil.move(str(child), str(new / child.name))
+        _relocate(child, new / child.name)
 
 
 def engine_options() -> list[dict]:

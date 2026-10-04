@@ -1,4 +1,4 @@
-/* Flow: the frame around the schedules.
+/* Flow ITR: the frame around the schedules.
  *
  * app.js draws each schedule and pages.js draws the places that are not one.
  * This file is what surrounds them: the header that is always in view, the
@@ -434,7 +434,7 @@ function applyRoute() {
   renderRail();
   renderPanel();
   if (changed) window.scrollTo(0, 0);
-  document.title = `${tabName(next)} · Flow`;
+  document.title = `${tabName(next)} · Flow ITR`;
   $('#start-btn')?.removeAttribute('aria-current');
   if (next === 'home' && sub === 'start') {
     $('#start-btn')?.setAttribute('aria-current', 'page');

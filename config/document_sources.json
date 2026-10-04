@@ -1,5 +1,5 @@
 {
-  "_note": "Where the usual documents for an ITR-3 come from, and how to download each one. Shown on the Documents page under 'Get documents'. Flow only opens the site and shows these steps; you log in and download yourself. Websites change their menus, so steps say where to look rather than promising exact labels. Tokens, filled in from the return's year: {fy} 2025-26, {ay} 2026-27, {fy_start} 1 April 2025, {fy_end} 31 March 2026, {fy_end_year} 2026, {cy} the calendar year Schedule FA covers (2025 for FY 2025-26). 'match' holds patterns tried against what sorting recognised each document as, to say which sources you already use. 'for' names the schedules a document feeds. Add a source by adding an entry; no code changes.",
+  "_note": "Where the usual documents for an ITR-3 come from, and how to download each one. Shown on the Documents page under 'Get documents'. Flow ITR only opens the site and shows these steps; you log in and download yourself. Websites change their menus, so steps say where to look rather than promising exact labels. Tokens, filled in from the return's year: {fy} 2025-26, {ay} 2026-27, {fy_start} 1 April 2025, {fy_end} 31 March 2026, {fy_end_year} 2026, {cy} the calendar year Schedule FA covers (2025 for FY 2025-26). 'match' holds patterns tried against what sorting recognised each document as, to say which sources you already use. 'for' names the schedules a document feeds. Add a source by adding an entry; no code changes.",
   "groups": [
     {
       "id": "department",
@@ -56,7 +56,7 @@
             "Download the Taxpayer Information Summary and the Annual Information Statement, each as PDF."
           ],
           "notes": [
-            "Both PDFs are password-protected with your PAN in small letters followed by your date of birth as ddmmyyyy. Flow opens them by itself once the PAN and date of birth are entered under Returns.",
+            "Both PDFs are password-protected with your PAN in small letters followed by your date of birth as ddmmyyyy. Flow ITR opens them by itself once the PAN and date of birth are entered under Returns.",
             "The AIS keeps being updated until about mid-June. Download it again shortly before filing."
           ]
         },
@@ -75,7 +75,7 @@
             "Pick assessment year {ay}, choose to view it as HTML, then export it as PDF."
           ],
           "notes": [
-            "The PDF is protected with your date of birth as ddmmyyyy. Flow opens it by itself once the date of birth is entered under Returns."
+            "The PDF is protected with your date of birth as ddmmyyyy. Flow ITR opens it by itself once the date of birth is entered under Returns."
           ]
         },
         {
@@ -92,11 +92,11 @@
           ],
           "steps": [
             "Open e-File › Income Tax Returns › View Filed Returns.",
-            "For this year, if you have already filed: download the return form (PDF or JSON). Flow sets it beside its own figures, line by line.",
+            "For this year, if you have already filed: download the return form (PDF or JSON). Flow ITR sets it beside its own figures, line by line.",
             "For last year: download that return too if it carried forward any loss, so the loss can be set off this year."
           ],
           "notes": [
-            "A filed return is only compared with; it never changes Flow's figures."
+            "A filed return is only compared with; it never changes Flow ITR's figures."
           ]
         }
       ]
@@ -222,7 +222,7 @@
             "If you cannot find it, request one on the NSDL CAS site, or on CDSL's site if your demat is with CDSL."
           ],
           "notes": [
-            "The PDF is usually protected with your PAN in capital letters. Flow tries that by itself.",
+            "The PDF is usually protected with your PAN in capital letters. Flow ITR tries that by itself.",
             "It shows holdings on 31 March and corporate actions such as bonus and split, which matter when total income is above ₹50 lakh."
           ]
         }
@@ -256,7 +256,7 @@
             "Save the PDF from the email when it arrives."
           ],
           "notes": [
-            "Set the password to your PAN in capital letters: Flow tries that by itself. Any other password, Flow cannot open."
+            "Set the password to your PAN in capital letters: Flow ITR tries that by itself. Any other password, Flow ITR cannot open."
           ]
         }
       ]
@@ -420,7 +420,7 @@
       ],
       "notes": [
         "It shows savings interest and dividends received, and gives the account details for the refund.",
-        "If the PDF is password-protected with the bank's own rule, download the Excel version, or a PDF without a password, if the bank offers one. Flow cannot open other passwords."
+        "If the PDF is password-protected with the bank's own rule, download the Excel version, or a PDF without a password, if the bank offers one. Flow ITR cannot open other passwords."
       ]
     },
     {

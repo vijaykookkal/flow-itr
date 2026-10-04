@@ -137,7 +137,7 @@ async function loadHelpDoc(name) {
   if (state.current === 'about') renderPanel();
 }
 
-/** Help and about: the user guide, what's new, and about Flow. */
+/** Help and about: the user guide, what's new, and about Flow ITR. */
 function pageAbout() {
   const tab = ['guide', 'changes', 'about'].includes(state.sub) ? state.sub : 'guide';
   const tabs = el('div', { class: 'tabs', role: 'tablist' },
@@ -146,7 +146,7 @@ function pageAbout() {
   const head = el('div', { class: 'page-head' },
     el('div', {},
       el('div', { class: 'page-title' }, el('h1', {}, 'Help and about')),
-      el('p', { class: 'page-sub' }, `Flow ${state.version || ''} · the guide, what has changed, and who made it.`)));
+      el('p', { class: 'page-sub' }, `Flow ITR ${state.version || ''} · the guide, what has changed, and who made it.`)));
 
   if (tab === 'about') return [head, tabs, aboutView()];
   const name = tab === 'guide' ? 'guide' : 'changes';
@@ -177,7 +177,8 @@ function aboutView() {
     el('section', { class: 'card about-card' },
       el('div', { class: 'about-brand' },
         el('img', { src: 'logo.svg', alt: '', width: '48', height: '48' }),
-        el('div', {}, el('h2', {}, 'Flow'), el('p', {}, 'An ITR-3 assistant for residents of India'))),
+        el('div', {}, el('h2', {}, 'Flow ', el('span', { class: 'brand-app' }, 'ITR')),
+          el('p', {}, 'An ITR-3 assistant for residents of India, and one of the Flow apps.'))),
       el('div', { class: 'about-rows' },
         row('Version', state.version || '—'),
         row('Licence', 'MIT, free to use, change and share'),
@@ -191,14 +192,14 @@ function aboutView() {
     el('section', { class: 'card' },
       el('h2', {}, 'Privacy in one paragraph'),
       el('div', { class: 'card-body' },
-        el('p', {}, 'Flow runs only on this computer and cannot be reached from another. It sends nothing over '
+        el('p', {}, 'Flow ITR runs only on this computer and cannot be reached from another. It sends nothing over '
           + 'the internet itself. To read a document, Claude Code or Codex sends its contents to Anthropic or '
           + 'OpenAI under your own account; with a local model through Ollama, nothing leaves this computer at '
           + 'all. Your returns, documents and results stay in your Flow folder, never in the program.'))),
     el('section', { class: 'card' },
       el('h2', {}, 'Not tax advice'),
       el('div', { class: 'card-body' },
-        el('p', {}, 'Flow prepares a draft for your review and files nothing. It is not affiliated with the '
+        el('p', {}, 'Flow ITR prepares a draft for your review and files nothing. It is not affiliated with the '
           + 'Income Tax Department or any institution named in it. Check every figure against the e-filing '
           + 'utility, and ask a professional when the return is not simple.'),
         el('p', { class: 'muted' }, 'Typefaces: Figtree and IBM Plex Mono, under the SIL Open Font License.'))));
@@ -339,9 +340,9 @@ function ollamaAdd(m) {
  *  engine, told in the same place. */
 const ENGINE_FACTS = {
   claude: { costs: 'a Claude subscription', documents: 'sent to Anthropic to be read',
-            install: 'Install the Claude Code command-line tool from claude.com/claude-code, run claude once to sign in, and restart Flow.' },
+            install: 'Install the Claude Code command-line tool from claude.com/claude-code, run claude once to sign in, and restart Flow ITR.' },
   codex: { costs: 'a ChatGPT subscription', documents: 'sent to OpenAI to be read',
-           install: 'Install the Codex command-line tool from github.com/openai/codex, run codex once to sign in, and restart Flow.' },
+           install: 'Install the Codex command-line tool from github.com/openai/codex, run codex once to sign in, and restart Flow ITR.' },
   ollama: { costs: 'nothing', documents: 'never leave this computer',
             install: 'Install Ollama from ollama.com/download (it is free), start it, and press Check again.' },
 };
@@ -357,8 +358,8 @@ function pageEngines() {
     el('div', {},
       el('div', { class: 'page-title' }, el('h1', {}, 'Reading engines')),
       el('p', { class: 'page-sub' },
-        'An engine is how Flow reaches a reader: Claude Code, Codex, or Ollama on this computer. Each offers '
-        + 'models, and the model is the reader. Flow computes the tax itself; the model only copies facts out '
+        'An engine is how Flow ITR reaches a reader: Claude Code, Codex, or Ollama on this computer. Each offers '
+        + 'models, and the model is the reader. Flow ITR computes the tax itself; the model only copies facts out '
         + 'of your papers. A return picks its engine and model under Returns.')),
     el('div', { class: 'page-actions' },
       el('button', { class: 'ghost', type: 'button',
@@ -381,7 +382,7 @@ function pageEngines() {
   const minutes = (name) => field('Time limit, minutes',
     el('input', { type: 'number', min: '1', max: '600', step: '1', value: engineValue(['time_limits_minutes', name]),
                   oninput: (e) => setEngineDraft(['time_limits_minutes', name], e.target.value) }),
-    `How long one reading may take before Flow stops it. Default ${defaults.time_limits_minutes?.[name] ?? 30}.`);
+    `How long one reading may take before Flow ITR stops it. Default ${defaults.time_limits_minutes?.[name] ?? 30}.`);
 
   // An Ollama model's own window or reasoning; "as shared" follows the
   // Ollama-wide value until the model is given its own.
@@ -497,6 +498,6 @@ function pageEngines() {
       el('span', {}, 'You have unsaved changes to the engines.'),
       el('button', { class: 'ghost', type: 'button', onclick: () => { ENGINE_DRAFT = {}; renderPanel(); } }, 'Discard'),
       el('button', { class: 'primary', type: 'button', onclick: () => saveEngineSettings(ENGINE_DRAFT) }, 'Save changes')),
-    el('p', { class: 'muted eng-where' }, `Saved in ${ENGINE_SETTINGS.stored_at || 'your Flow folder'}, not in the program, so updating Flow never changes them.`),
+    el('p', { class: 'muted eng-where' }, `Saved in ${ENGINE_SETTINGS.stored_at || 'your Flow folder'}, not in the program, so updating Flow ITR never changes them.`),
   ];
 }

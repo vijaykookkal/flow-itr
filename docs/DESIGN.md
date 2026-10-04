@@ -1,4 +1,4 @@
-# ITR-3 Filing Assistant — System Design
+# Flow ITR — System Design
 
 **Status:** built (see VERSION); where this document describes something not
 built yet, it says so, and §11 lists it · **Target:** AY 2026-27 (FY 2025-26) ·
@@ -466,7 +466,7 @@ something else is finished, and each place says what it needs as a status.
 
 | Place | What it is for |
 |---|---|
-| Home | The page Flow opens on: what Flow is, the return in use, how it works, and the getting-started guide as a section |
+| Home | The page Flow ITR opens on: what Flow ITR is, the return in use, how it works, and the getting-started guide as a section |
 | Returns | One return at a time: whose it is, the year, how the tax is worked out, the reading engine, its folders |
 | Schedules | Every schedule as a card: what it is about, what it reads, where it stands, and its Read or Recompute button |
 | Summary | What is owed, key ratios and graphics, the income and tax statements, what is waiting on a person, and how each schedule reconciles |
@@ -530,7 +530,17 @@ the only module that knows where it is, and resolves it in this order:
 
 1. the `FLOW_HOME` environment variable;
 2. `flow.local.json` beside the program, `{"home": "..."}`, ignored by git;
-3. a folder called `flow` in the user's home directory.
+3. `Flow/ITR` in the user's home directory: `Flow` is the family folder, and
+   each Flow app keeps to its own folder in it.
+
+Before 0.3.1 the default was a folder called `flow` there.
+`paths.move_legacy_home()` moves its files once, when the server starts (and in
+`tools/restart_server.py`, before the new server's log is opened), only for the
+default home, and all or nothing: the files belonging to returns move by
+rename, never by copy, with `profiles.json` last, so a move that stops halfway
+leaves the old folder whole and still the home, and what had moved is put
+back. On a disk that ignores case, `Flow` is the old folder itself; it takes
+the family's spelling.
 
 The default is under the user's own folder because that exists on every
 operating system and needs no rights a normal account lacks. A fixed path such
@@ -596,7 +606,7 @@ particular person's.
 
 ## 16. Reading engines, including a local model
 
-**Engines and models.** An engine is how Flow reaches a reader: the Claude Code
+**Engines and models.** An engine is how Flow ITR reaches a reader: the Claude Code
 command-line tool, the Codex command-line tool, or Ollama's API on this
 computer. Every engine offers models, and the model is the reader: Claude
 Code's Opus, Sonnet and Haiku; Codex's default and any model names the person
@@ -618,7 +628,7 @@ and are recorded on every output.
 |---|---|---|
 | Claude Code | An agent: opens the documents itself, read-only tools, confined to the schedule's folders | The documents it reads, to Anthropic, under the user's account |
 | Codex | An agent with a sandboxed shell | The documents it reads, to OpenAI, under the user's account |
-| Ollama (`ollama:<model>`) | No tools: Flow sends the text it already makes of each document (`server/convert.py`) | Nothing |
+| Ollama (`ollama:<model>`) | No tools: Flow ITR sends the text it already makes of each document (`server/convert.py`) | Nothing |
 
 **The local engine** (`server/engines/ollama_local.py`) talks to Ollama's HTTP
 API on the same machine. Three decisions shape it:

@@ -1,5 +1,5 @@
 @echo off
-rem Start Flow and open it in the browser. Needs Python 3.10 or later; nothing to install.
+rem Start Flow ITR and open it in the browser. Needs Python 3.10 or later; nothing to install.
 setlocal
 cd /d "%~dp0"
 where py >nul 2>nul && (py -3 -m server %* & goto :eof)

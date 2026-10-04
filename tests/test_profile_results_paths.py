@@ -151,6 +151,21 @@ class ResultsPaths(unittest.TestCase):
         self.assertTrue(results.exists())
         self.assertEqual(profiles.get(profile["id"])["data_dir"], "Asha 2025-26/results")
 
+    @unittest.skipUnless(os.name == "nt", "only Windows refuses to rename a folder holding an open file")
+    def test_an_open_file_stops_the_rename_cleanly(self):
+        profile = self.create_return()
+        results = self.put(profile["data_dir"], "salary.json")
+        held = open(results.parent / "results.xlsx", "w")       # as Excel would hold it
+        try:
+            with self.assertRaisesRegex(ValueError, "Nothing was changed"):
+                profiles.update(profile["id"], {"name": "Asha renamed", "move_folder": True})
+        finally:
+            held.close()
+        # Nothing copied half-way: the old folder whole, nothing in the new one.
+        self.assertEqual(sorted(p.name for p in results.parent.iterdir()), ["results.xlsx", "salary.json"])
+        self.assertFalse((self.home / "Asha renamed" / "results").exists())
+        self.assertEqual(profiles.get(profile["id"])["name"], "Asha 2025-26")
+
     def test_other_changes_leave_a_results_folder_kept_elsewhere(self):
         profile = self.create_return()
         store = profiles.load_all()

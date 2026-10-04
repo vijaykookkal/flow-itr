@@ -187,7 +187,7 @@ def code_version(root=None) -> str:
     """A fingerprint of the server's own code as it is on disk now.
 
     Reloading the page picks up the page's changes, but this process keeps
-    running the code it started with until Flow is restarted: a new endpoint
+    running the code it started with until Flow ITR is restarted: a new endpoint
     answers "not found" and a new field is simply missing, which looks like a
     bug. Names, sizes and modification times notice a change, and are cheap
     enough to look at on every poll."""
@@ -976,7 +976,16 @@ def serve(open_browser: bool = True):
             f'  netstat -ano | findstr ":{PORT}"   then   taskkill /F /PID <pid>'
         ) from exc
     url = f"{ORIGIN}/"
-    print(f"Flow, an ITR-3 assistant, on {url}")
+    print(f"Flow ITR, an ITR-3 assistant, on {url}")
+    # Before anything reads the home: versions before 0.3.1 kept it in a
+    # folder called flow, and its files move to Flow/ITR once. The port is
+    # this process's by now, so no older server is still using them.
+    moved = paths.move_legacy_home()
+    if moved and moved["moved"]:
+        print(f"  moved     your files from {moved['from']} to {moved['to']}")
+    elif moved:
+        print(f"  NOT MOVED your files stay in {moved['from']} for now: {moved['error']}. "
+              f"Close whatever has it open and start Flow ITR again.")
     # First run on a machine: this makes the home, a profile called DEFAULT
     # and its two folders, so there is somewhere to put documents.
     profile = profiles.describe(profiles.active() or {})

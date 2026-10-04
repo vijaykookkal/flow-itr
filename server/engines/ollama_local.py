@@ -12,7 +12,7 @@ How it differs from the command-line engines:
 
   * **It cannot open files.** Claude Code and Codex are agents that read the
     documents themselves. A model behind Ollama only sees text it is sent, so
-    the documents are sent: the text Flow already makes of every PDF,
+    the documents are sent: the text Flow ITR already makes of every PDF,
     spreadsheet and Word file (server/convert.py), with the original's name on
     it so citations still point at the document you hold. A scanned PDF with no
     text layer therefore cannot be read here.
@@ -52,7 +52,7 @@ NOTE = ("Reads with an open model through Ollama, so no document leaves this com
         "less accurate than Claude or Codex on messy statements, and it cannot read scanned PDFs "
         "that have no text.")
 SELECTABLE = True
-# It sees only the text Flow sends it: the tightest confinement of any engine.
+# It sees only the text Flow ITR sends it: the tightest confinement of any engine.
 CONFINES_READS = True
 
 # Tried in order when no model is configured: light mixture-of-experts models

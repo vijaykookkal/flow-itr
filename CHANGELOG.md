@@ -1,7 +1,33 @@
-# What's new
+# What's new in Flow ITR
 
-Changes worth knowing about, newest first. Flow is a draft-preparing tool:
+Changes worth knowing about, newest first. Flow ITR is a draft-preparing tool:
 check every figure against the e-filing utility before you file.
+
+## 0.3.1 (4 October 2026)
+
+**Flow ITR.** The app is now called Flow ITR, one of the Flow apps. The name is
+in the header, the browser tab, Home and About, and the logo is the Flow mark
+in Flow ITR's blue. The logo in the header now leads to Home.
+
+**Your files are in Flow\ITR.** Flow ITR now keeps everything personal in
+`Flow\ITR` in your user folder, beside the other Flow apps, instead of a folder
+called `flow`. Your files move there by themselves the first time this version
+starts, all at once or not at all: if a file is open, `results.xlsx` in Excel
+for instance, nothing moves, the old folder stays in use, and the window says
+what to close. A folder you chose with `FLOW_HOME` or `flow.local.json` is not
+moved.
+
+**Safer folder moves.** Moving a folder, when a return is renamed or with
+**Move…**, no longer copies half of it when a file inside is open: the move is
+refused instead, and nothing changes.
+
+**Google Drive.** "Put on Google Drive" now moves a return's documents to
+`Flow/ITR/<return>` on the Drive, so each Flow app keeps to its own folder.
+Returns already on the Drive stay where they are.
+
+**Brand notes.** [docs/BRAND.md](docs/BRAND.md) sets out what the Flow apps share:
+the name, the mark and each app's colour, the lockup, and where each keeps its
+files.
 
 ## 0.3.0 (4 October 2026)
 

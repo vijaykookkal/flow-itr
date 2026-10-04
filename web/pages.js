@@ -1,4 +1,4 @@
-/* Flow: the places that are not a schedule.
+/* Flow ITR: the places that are not a schedule.
  *
  * Summary, Documents, Review, Reconcile and Hand-off. They are places, not
  * steps: nothing here is numbered, nothing waits on anything else, and each
@@ -790,7 +790,7 @@ function documentTabs(active, count) {
     tab('get', 'Get documents', '#documents/get'));
 }
 
-/** Where each usual document comes from and how to download it. Flow opens
+/** Where each usual document comes from and how to download it. Flow ITR opens
  *  the site and shows the steps; the person logs in and downloads. */
 function getDocumentsView() {
   const guide = state.sources || {};
@@ -839,7 +839,7 @@ function getDocumentsView() {
   const how = el('section', { class: 'card gd-how' },
     el('div', { class: 'card-body' },
       el('ol', { class: 'gd-how-steps' },
-        el('li', {}, el('b', {}, 'Open the site'), ' with the button on its card, and log in. Flow never sees your password.'),
+        el('li', {}, el('b', {}, 'Open the site'), ' with the button on its card, and log in. Flow ITR never sees your password.'),
         el('li', {}, el('b', {}, 'Follow the steps'), ' on the card to download each document for ', el('b', {}, `FY ${state.fy}`), '.'),
         el('li', {}, el('b', {}, 'Save or move the file'), ' into this return’s documents folder. Sub-folders and any file name are fine.'),
         el('li', {}, el('b', {}, 'Sort documents again'), ' on the In your folder tab, then read the schedules that have new documents.')),
@@ -857,7 +857,7 @@ function getDocumentsView() {
       el('div', {},
         el('div', { class: 'page-title' }, el('h1', {}, 'Documents')),
         el('p', { class: 'page-sub' },
-          'Where each document usually comes from, and how to download it. Flow opens the site and '
+          'Where each document usually comes from, and how to download it. Flow ITR opens the site and '
           + 'shows the steps; you log in and download. Sites change their menus now and then, so if a '
           + 'step does not match, look for the nearest item with that name.'))),
     documentTabs('get', docs.length),
@@ -2029,7 +2029,7 @@ function readingAndComputing() {
            'Takes a minute or two a schedule and uses your AI subscription.'],
           ['Read documents', 'Read again']),
         el('div', { class: 'rc-arrow', 'aria-hidden': 'true' }, icon('chev')),
-        side('calc', 'Computing', 'done by Flow itself, with no AI',
+        side('calc', 'Computing', 'done by Flow ITR itself, with no AI',
           ['Applies the tax rules to those facts: deductions, set-offs, slab rates, surcharge, cess, the balance.',
            'Instant, and the same answer every time for the same facts.',
            'Happens by itself after every reading, correction or change of setting.'],
@@ -2125,7 +2125,7 @@ function guideSteps() {
 
   const steps = [
     { id: 'profile', icon: 'user', title: 'Set up your return',
-      lead: 'A return holds everything for one income-tax return: whose it is, the year, how the tax is worked out, its documents, and all that is read and computed from them. Flow starts you with one called DEFAULT.',
+      lead: 'A return holds everything for one income-tax return: whose it is, the year, how the tax is worked out, its documents, and all that is read and computed from them. Flow ITR starts you with one called DEFAULT.',
       does: [
         ['Open ', ui('Returns'), ' at the top of the left panel.'],
         ['Fill in the ', ui('name'), ', ', ui('financial year'), ', ', ui('PAN'), ' and ', ui('date of birth'),
@@ -2138,7 +2138,7 @@ function guideSteps() {
       where: 'Left panel › Returns',
       go: ['Open Returns', '#_profiles'] },
     { id: 'documents', icon: 'documents', title: 'Copy your documents into the return’s folder',
-      lead: 'Everything for the year goes into one folder. Flow works out what each file is, so nothing needs sorting or renaming.',
+      lead: 'Everything for the year goes into one folder. Flow ITR works out what each file is, so nothing needs sorting or renaming.',
       does: [
         ['Open the documents folder below in File Explorer and copy your files into it. Sub-folders are fine.'],
         ['Not sure where to get something? ', ui('Documents › Get documents'),
@@ -2151,7 +2151,7 @@ function guideSteps() {
       where: 'On your computer, or Documents › Get documents',
       go: ['Open Get documents', '#documents/get'] },
     { id: 'sort', icon: 'sort', title: 'Sort the documents',
-      lead: 'Flow opens every file, decides what it is, and sends it to the schedules that need it.',
+      lead: 'Flow ITR opens every file, decides what it is, and sends it to the schedules that need it.',
       does: [
         ['Open ', ui('Documents'), ' in the left panel and press ', ui('Sort documents again'), '. It takes a minute or two.'],
         ['Look down the list: each document shows which schedules will read it. One marked “No schedule reads it” needs a look.'],
@@ -2197,11 +2197,11 @@ function guideSteps() {
       where: 'Left panel › Reconcile',
       go: ['Open Reconcile', '#reconcile'] },
     { id: 'handoff', icon: 'handoff', title: 'Hand-off: enter the figures and file',
-      lead: 'Flow files nothing. It gives you every schedule in the form’s own line numbers, ready to type into the e-filing utility.',
+      lead: 'Flow ITR files nothing. It gives you every schedule in the form’s own line numbers, ready to type into the e-filing utility.',
       does: [
         ['Open ', ui('Hand-off'), '. Pick a schedule on the left, type its lines into the utility and tick each one as you go.'],
         ['Press ', ui('Export to Excel'), ' to get the whole return as ', ui('results.xlsx'), ', to keep or send to your accountant.'],
-        ['Before you submit in the utility, compare its final tax with Flow’s. Interest under sections 234A, 234B and 234C is added by the utility, not by Flow.'],
+        ['Before you submit in the utility, compare its final tax with Flow ITR’s. Interest under sections 234A, 234B and 234C is added by the utility, not by Flow ITR.'],
       ],
       extra: () => el('div', { class: 'where' }, pathRow('Workbook', state.export?.path)),
       where: 'Left panel › Hand-off',
@@ -2211,15 +2211,15 @@ function guideSteps() {
 }
 
 const GUIDE_TIPS = [
-  ['bolt', 'Reading and computing are different', 'The AI engine reads: it copies facts out of your documents. Flow computes: it applies the tax rules, instantly and by itself. You only ever ask for a reading.'],
+  ['bolt', 'Reading and computing are different', 'The AI engine reads: it copies facts out of your documents. Flow ITR computes: it applies the tax rules, instantly and by itself. You only ever ask for a reading.'],
   ['refresh', 'Added or changed a document?', 'Sort the documents again (step 3), then read the schedules it belongs to again (step 4). Everything after that updates.'],
   ['pencil', 'Your work is never overwritten', 'Reading a schedule again keeps every correction and every decision you made.'],
   ['info', 'Stuck on a figure?', 'Click it. The panel that opens shows the working, the printed line in your document and what the department holds.'],
-  ['warn', 'A draft, not a filing', 'Flow submits nothing. You file in the e-filing utility, and for anything but a simple return a professional should check it.'],
+  ['warn', 'A draft, not a filing', 'Flow ITR submits nothing. You file in the e-filing utility, and for anything but a simple return a professional should check it.'],
   ['user', 'More than one return', 'Add a return for another person or year under Returns, and switch with Return at the top.'],
 ];
 
-/** The page Flow opens on: what it is, the return in hand, how it works, and
+/** The page Flow ITR opens on: what it is, the return in hand, how it works, and
  *  how to get started. */
 function pageHome() {
   const p = state.activeProfile || {};
@@ -2238,10 +2238,10 @@ function pageHome() {
   // ---- the opening: what this is, in one breath
   const point = (iconName, text) => el('li', {}, icon(iconName), text);
   const intro = el('div', { class: 'home-intro' },
-    el('div', { class: 'home-eyebrow' }, 'Flow · ITR-3 assistant for residents of India'),
+    el('div', { class: 'home-eyebrow' }, 'Flow ITR · ITR-3 assistant for residents of India'),
     el('h1', {}, 'Your income-tax return, prepared from your own documents'),
     el('p', { class: 'home-lede' },
-      'Flow reads your Form 16, AIS, broker and bank statements, works out every schedule of '
+      'Flow ITR reads your Form 16, AIS, broker and bank statements, works out every schedule of '
       + 'ITR-3, checks the result against what the department holds, and gives you the figures to '
       + 'enter. It runs on your computer and files nothing.'),
     el('div', { class: 'home-cta' },
@@ -2281,13 +2281,13 @@ function pageHome() {
     el('span', { class: 'home-flow-n' }, n), icon(iconName), el('b', {}, title), el('p', {}, text));
   const arrow = () => el('div', { class: 'home-flow-arrow', 'aria-hidden': 'true' }, icon('chev'));
   const how = el('section', { class: 'home-section' },
-    el('h2', {}, 'How Flow works'),
+    el('h2', {}, 'How Flow ITR works'),
     el('div', { class: 'home-flow' },
       box('1', 'documents', 'You add documents', 'Everything for the year in one folder. No sorting or renaming.'),
       arrow(),
       box('2', 'doc', 'The AI engine reads', 'Claude Code, Codex, or an open model through Ollama, copies the facts out of each document.', 'ai'),
       arrow(),
-      box('3', 'calc', 'Flow computes and checks', 'The tax rules, applied by Flow itself, then reconciled with the AIS, TIS and 26AS.'),
+      box('3', 'calc', 'Flow ITR computes and checks', 'The tax rules, applied without AI, then reconciled with the AIS, TIS and 26AS.'),
       arrow(),
       box('4', 'handoff', 'You file', 'The figures in the form’s own line numbers, to enter in the e-filing utility.')));
 
@@ -2311,9 +2311,9 @@ function pageHome() {
       el('b', {}, found.length ? 'Reading engine ready' : 'Before you begin: install a reading engine'),
       el('span', {}, found.length
         ? ` ${found.map((e) => e.label).join(' and ')} found on this computer.`
-        : ' Flow reads documents with the Claude Code or Codex command-line tool, installed and signed in, '
+        : ' Flow ITR reads documents with the Claude Code or Codex command-line tool, installed and signed in, '
           + 'or with an open model on this computer through Ollama (no GPU needed). '
-          + 'The desktop app or the website is not enough. Install one, sign in, and start Flow again.')));
+          + 'The desktop app or the website is not enough. Install one, sign in, and start Flow ITR again.')));
 
   const start = el('section', { class: 'home-section', id: 'getting-started' },
     el('div', { class: 'home-section-h' },
@@ -2329,7 +2329,7 @@ function pageHome() {
       el('div', { class: 'tip' }, icon(i), el('div', {}, el('b', {}, t), el('p', {}, x))))));
 
   const foot = el('footer', { class: 'home-foot' },
-    'A draft for your review, not a filing. Flow sends nothing anywhere; documents are read by the engine you '
+    'A draft for your review, not a filing. Flow ITR sends nothing anywhere; documents are read by the engine you '
     + 'chose, under your own account. ', el('a', { href: '#_profiles' }, 'Where your files are'), '.');
 
   return [hero, how, start, tips, foot];
@@ -2761,9 +2761,9 @@ function pagePlanning() {
   }
   if (slot.error) {
     const older = slot.error === 'not found';
-    return [head, card(older ? 'Flow needs restarting for this page' : 'The plan could not be worked out',
+    return [head, card(older ? 'Flow ITR needs restarting for this page' : 'The plan could not be worked out',
       el('div', { class: 'card-body' }, el('p', {}, older
-        ? 'The Flow that is running was started before this page was added, so it cannot work out the '
+        ? 'The Flow ITR that is running was started before this page was added, so it cannot work out the '
           + 'plan. Close its window (or press Ctrl+C in it), run flow.cmd again, then reload this page.'
         : slot.error)), older ? 'warn' : 'err')];
   }
@@ -2773,7 +2773,7 @@ function pagePlanning() {
   const banners = [];
   if (proj.rates.assumed) {
     banners.push(el('div', { class: 'callout warn' }, icon('warn'), el('div', {},
-      el('b', {}, `FY ${proj.fy} rates are not built into Flow yet. `),
+      el('b', {}, `FY ${proj.fy} rates are not built into Flow ITR yet. `),
       `This plan uses the FY ${proj.rates.fy} slabs, rates and thresholds; if the year’s Finance Act `
       + 'changed them, the figures will be off by that much.')));
   }

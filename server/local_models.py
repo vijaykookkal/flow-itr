@@ -25,7 +25,7 @@ NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._/-]*(:[a-z0-9._-]+)?$", re.I)
 # statement of the machine each suits, without a graphics card.
 RECOMMENDED = [
     {"name": "gpt-oss:20b", "size": "about 13 GB",
-     "note": "Recommended. Quick on a laptop processor, reliable at filling in the exact shape Flow asks for, "
+     "note": "Recommended. Quick on a laptop processor, reliable at filling in the exact shape Flow ITR asks for, "
              "reads long documents. Suits 16 GB of memory, comfortable with 32 GB."},
     {"name": "qwen3:30b-a3b", "size": "about 19 GB",
      "note": "Very good with tables and figures, equally quick per word. Needs 32 GB of memory."},

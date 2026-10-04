@@ -33,7 +33,12 @@ from engine import fx
 
 MAX_DAYS_BACK = 7
 SKILL = "sbi-tt-rates"
-ARCHIVE_DIR = paths.state_dir() / "fx_archive"
+
+
+def archive_dir() -> pathlib.Path:
+    """Looked up each time, not once at import: the home can move (see
+    paths.move_legacy_home) after this module is loaded."""
+    return paths.state_dir() / "fx_archive"
 
 
 def _skill_text() -> str:
@@ -182,12 +187,13 @@ def run(needs: list[dict], engine_name: str, on_event, cancel=None) -> dict:
 
     # Download each archive the skill names; the engine reads the local copy.
     _fetched.clear()
-    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    archive = archive_dir()
+    archive.mkdir(parents=True, exist_ok=True)
     archives: dict[str, pathlib.Path] = {}
     for cur in sorted({n["currency"].upper() for n in needs}):
         url = archive_url(cur)
         on_event({"phase": "fetch", "detail": url})
-        target = ARCHIVE_DIR / f"{cur}.csv"
+        target = archive / f"{cur}.csv"
         target.write_text(_fetch(url), encoding="utf-8")
         archives[cur] = target
 
@@ -196,7 +202,7 @@ def run(needs: list[dict], engine_name: str, on_event, cancel=None) -> dict:
     reply = engine.run(
         engines.Request(schedule="fx_rates", ay="", files=[], prompt=build_prompt(needs, archives),
                         cancel=cancel, time_limit=engines.time_limit_for(engine_name),
-                        cwd=ARCHIVE_DIR, add_dirs=[ARCHIVE_DIR]),
+                        cwd=archive, add_dirs=[archive]),
         on_event,
     )
     name = engine_name

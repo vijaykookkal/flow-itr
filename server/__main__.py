@@ -4,7 +4,7 @@ import argparse
 import sys
 
 if sys.version_info < (3, 10):
-    raise SystemExit(f"Flow needs Python 3.10 or later; this is {sys.version.split()[0]}.")
+    raise SystemExit(f"Flow ITR needs Python 3.10 or later; this is {sys.version.split()[0]}.")
 
 from .app import serve  # noqa: E402
 

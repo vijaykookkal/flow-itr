@@ -1,9 +1,13 @@
-# Flow: an ITR-3 filing assistant
+![Flow ITR](web/logo.svg)
+
+# Flow ITR
+
+**An ITR-3 filing assistant for residents of India**, and one of the **Flow** apps.
 
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue) ![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen) ![Runs locally](https://img.shields.io/badge/runs-locally-informational) [![MIT licence](https://img.shields.io/badge/licence-MIT-lightgrey)](LICENSE)
 
-Flow helps you prepare an Indian income-tax return (form ITR-3) from the
-documents you already have. You put the year's papers in a folder; Flow reads
+Flow ITR helps you prepare an Indian income-tax return (form ITR-3) from the
+documents you already have. You put the year's papers in a folder; Flow ITR reads
 them, works out each schedule of the return, checks the result against what the
 Income Tax Department has on record for you, and gives you the figures to type
 into the e-filing portal.
@@ -23,7 +27,7 @@ You do not need to know programming. You will type two or three commands, once.
 
 ### 1. Install Python
 
-Flow needs Python 3.10 or newer.
+Flow ITR needs Python 3.10 or newer.
 
 - **Windows:** install "Python 3" from the Microsoft Store, or download it from
   [python.org/downloads](https://www.python.org/downloads/). If the installer
@@ -33,21 +37,21 @@ Flow needs Python 3.10 or newer.
 
 ### 2. Install a reading engine and sign in
 
-Flow reads your documents with an AI assistant. You need **one** of these
+Flow ITR reads your documents with an AI assistant. You need **one** of these
 three:
 
 | Engine | Costs | Your documents | Install |
 |---|---|---|---|
 | Claude Code CLI (recommended) | a Claude subscription | sent to Anthropic to be read | install it from [claude.com/claude-code](https://claude.com/claude-code), then run `claude` once in a terminal and sign in |
 | Codex CLI | a ChatGPT subscription | sent to OpenAI to be read | install it from [github.com/openai/codex](https://github.com/openai/codex), then run `codex` once in a terminal and sign in |
-| An open model through Ollama | free | **never leave your computer** | install [Ollama](https://ollama.com/download), then add a model on the **Reading engines** page inside Flow (see [Using an open model with Ollama](#using-an-open-model-with-ollama)) |
+| An open model through Ollama | free | **never leave your computer** | install [Ollama](https://ollama.com/download), then add a model on the **Reading engines** page inside Flow ITR (see [Using an open model with Ollama](#using-an-open-model-with-ollama)) |
 
-For Claude and Codex, Flow needs the **command-line tool (CLI)**, not the
-desktop app: Flow starts the `claude` or `codex` command itself, in the
+For Claude and Codex, Flow ITR needs the **command-line tool (CLI)**, not the
+desktop app: Flow ITR starts the `claude` or `codex` command itself, in the
 background. Having only the Claude or ChatGPT desktop app, or only the website,
 is not enough. To check it is installed, open a terminal (on Windows:
 PowerShell) and type `claude --version` or `codex --version`; if a version
-number is printed, Flow will find it. Flow uses the sign-in you did there and
+number is printed, Flow ITR will find it. It uses the sign-in you did there and
 never asks for a password or a key.
 
 Ollama needs no account and no graphics card; an ordinary laptop with 16 GB of
@@ -65,7 +69,7 @@ Which model does the reading, and how long a reading may take, are set on the
 unless you choose Sonnet, Haiku or your Claude Code default; Codex uses its own
 default unless you name a model.
 
-### 3. Download Flow
+### 3. Download Flow ITR
 
 - **Easiest:** on this page press the green **Code** button, choose
   **Download ZIP**, and unzip it anywhere, for example your Documents folder.
@@ -77,9 +81,9 @@ default unless you name a model.
 - **Mac or Linux:** open a terminal in the folder and run `./flow.sh`
   (the first time, run `chmod +x flow.sh` before it).
 
-A black window opens and stays open, and your browser opens Flow at
+A black window opens and stays open, and your browser opens Flow ITR at
 `http://127.0.0.1:8787`. Leave the window open while you work; closing it stops
-Flow. The window also tells you where your folders are:
+Flow ITR. The window also tells you where your folders are:
 
 ```
   home      C:\Users\you\flow
@@ -91,7 +95,7 @@ Flow. The window also tells you where your folders are:
 ### 5. Add your documents
 
 Copy the year's documents into the **documents** folder shown above. Sub-folders
-are fine, and nothing needs renaming or sorting. A `.zip` is fine too: Flow
+are fine, and nothing needs renaming or sorting. A `.zip` is fine too: Flow ITR
 opens it and routes it by what is inside (a `.rar` or `.7z` it cannot open, and
 says so). Useful ones:
 
@@ -104,24 +108,24 @@ says so). Useful ones:
 - proofs for deductions: insurance, NPS, donations, loan interest
 - last year's filed return, if you want this year compared against one
 
-Not sure where to get something? In Flow, **Documents › Get documents** has a
+Not sure where to get something? In Flow ITR, **Documents › Get documents** has a
 card for each usual source (the income-tax portal, your employer, Zerodha, ICICI
 Direct, NSDL/CDSL, CAMS, Merrill, INDmoney and the main banks). Each card opens
 the site and lists what to download for the year and how. You log in and
-download yourself; Flow never sees a password. The cards come from
+download yourself; Flow ITR never sees a password. The cards come from
 `config/document_sources.json`, so a new bank or broker can be added there.
 
 The AIS, TIS and Form 26AS are password-protected. Enter your PAN and date of
-birth under **Returns** (at the top of the left panel) and Flow opens them for
+birth under **Returns** (at the top of the left panel) and Flow ITR opens them for
 you, and NSDL/CDSL statements protected with your PAN as well.
 
 ---
 
 ## Using it
 
-Flow is a set of places you can open in any order. A typical first run:
+Flow ITR is a set of places you can open in any order. A typical first run:
 
-1. **Documents → "Sort documents again".** Flow looks at every file and decides
+1. **Documents → "Sort documents again".** Flow ITR looks at every file and decides
    what it is and which part of the return it belongs to.
 2. **Schedules → "Read documents" on each card.** The Schedules page lists every
    part of the return (Salary, Capital gains, Other sources and so on) with a
@@ -161,11 +165,11 @@ can type over any expected figure. Its cards, each opening to the detail:
 
 Below them are hints chosen for what is in your return. Everything is worked
 out with the same rules as the computation, and nothing changes your return.
-For a year whose rates are not built into Flow yet, the plan uses the latest
+For a year whose rates are not built into Flow ITR yet, the plan uses the latest
 year's and says so.
 
 **Reading and computing are different.** Reading is done by the AI engine: it
-opens your documents and copies out the facts. Computing is done by Flow itself,
+opens your documents and copies out the facts. Computing is done by Flow ITR itself,
 with no AI: it applies the tax rules to those facts, instantly, and does so by
 itself after every reading or correction. So the only thing you ever ask for is
 a reading: once per schedule, and again when you add or replace a document.
@@ -176,7 +180,7 @@ correct it there with a reason; your correction survives every re-read.
 Press **Ctrl K** to search every line, amount and document.
 
 The **Getting started** button at the top of the page opens the same steps as a
-guide inside Flow, with a button on each step that takes you to the right place.
+guide inside Flow ITR, with a button on each step that takes you to the right place.
 
 ---
 
@@ -189,7 +193,7 @@ comfortable.
 
 1. Install Ollama from [ollama.com/download](https://ollama.com/download). It
    starts by itself and runs quietly in the background.
-2. In Flow, open **Reading engines** from the settings menu (top right) and press
+2. In Flow ITR, open **Reading engines** from the settings menu (top right) and press
    **Download** on a model. The recommended one for a laptop without a graphics
    card is `gpt-oss:20b`. A large model takes a while on a home connection; you
    can leave the page and it carries on. (From a terminal,
@@ -210,10 +214,10 @@ What to expect, honestly:
 
 - **Slower.** A laptop reads perhaps a few hundred words a second, so a large
   schedule can take ten minutes or more. Leave it running.
-- **Less accurate on messy statements** than Claude or Codex. Everything Flow
+- **Less accurate on messy statements** than Claude or Codex. Everything Flow ITR
   checks still applies: each answer must fit the schedule exactly, and the
   reconciliation with the AIS, TIS and Form 26AS shows what does not agree.
-- **A limit on how much it can read at once.** Flow gives the model 64,000
+- **A limit on how much it can read at once.** Flow ITR gives the model 64,000
   tokens by default (the Window setting on the Reading engines page); `gpt-oss:20b` can
   take 131072 on a 32 GB machine. A schedule whose documents do not fit is
   refused with its size, never read halfway. A year of bank statements for
@@ -226,28 +230,35 @@ What to expect, honestly:
 ## Where your files are, and your privacy
 
 **Nothing personal is stored with the program.** Everything of yours lives in
-one folder, called the Flow home, which by default is a folder named `flow`
-inside your user folder:
+one folder, called the Flow home, which by default is `Flow\ITR` inside your
+user folder (`Flow/ITR` on a Mac or Linux). `Flow` holds each of the Flow apps
+in a folder of its own:
 
 ```
-flow/
+Flow/ITR/
   profiles.json            your returns and their settings
   fx_rates.json            exchange rates looked up for foreign income
   DEFAULT/
     documents/            your documents go here
-    results/               everything Flow produces, and results.xlsx
+    results/               everything Flow ITR produces, and results.xlsx
   .state/                  working files; safe to delete
 ```
 
-- **Flow itself sends nothing over the internet.** It runs only on your
+- **Flow ITR itself sends nothing over the internet.** It runs only on your
   computer and cannot be reached from another one.
 - **With Ollama, nothing leaves at all**: the model runs on your computer.
 - **Otherwise, the reading engine does.** To read a document, Claude Code or Codex sends
   its contents to its maker (Anthropic or OpenAI), under the account you signed
   in with. That is the only place your documents go.
-- **Back it up** by copying the `flow` folder. To move to a new computer, copy
-  that folder across and install Flow there.
-- **Nothing in the `flow` folder is encrypted.** `profiles.json` holds each
+- **Back it up** by copying the `Flow\ITR` folder. To move to a new computer,
+  copy that folder across and install Flow ITR there.
+- **Before version 0.3.1 the folder was called `flow`.** Flow ITR moves your
+  files from it to `Flow\ITR` by itself the first time a newer version starts,
+  all at once or not at all: if a file is open (`results.xlsx` in Excel, say),
+  nothing moves, the old folder stays in use, and the window says what to
+  close. A folder you chose yourself, with `FLOW_HOME` or `flow.local.json`,
+  is never moved.
+- **Nothing in the `Flow\ITR` folder is encrypted.** `profiles.json` holds each
   return's PAN and date of birth in plain text (they are what opens the AIS and
   TIS), and the `results` folder holds your income and bank details in a form
   that is easy to read, next to the documents themselves. Anyone who can open
@@ -263,7 +274,7 @@ them (your corrections and decisions, the computation, the reconciliation, the
 workbook). Each return keeps its own. Add one under
 **Returns** (at the top of the left panel) for a spouse, a parent, or
 another year. Each gets its own folder in the Flow home, named after the
-return, holding its documents and everything Flow produces from them; the
+return, holding its documents and everything Flow ITR produces from them; the
 Returns page shows where it is. Two returns can share one documents folder, for
 example to compare the old and new regimes.
 
@@ -273,14 +284,14 @@ example to compare the old and new regimes.
   Folders, press **Change location** and paste a full path such as
   `D:\Tax\2025-26`. Nothing is moved: the return simply reads from that folder.
   **Move…** instead carries the folder's contents to the new place. Everything
-  Flow produces stays in the return's own folder in the Flow home.
+  Flow ITR produces stays in the return's own folder in the Flow home.
 - **Renaming a return:** the return's folder follows its name, so a rename
-  moves it. Flow warns first and says what will move. Documents kept somewhere
+  moves it. Flow ITR warns first and says what will move. Documents kept somewhere
   else stay where they are.
 - **Google Drive:** install Google Drive for desktop, then type a Drive path
-  such as `G:/My Drive/Flow/DEFAULT/documents`, or press "Put on Google Drive"
-  on the return when Flow finds your Drive. Your documents are then stored in
-  your Google account; what Flow produces stays in the Flow home. Let Drive finish syncing
+  such as `G:/My Drive/Flow/ITR/DEFAULT/documents`, or press "Put on Google Drive"
+  on the return when Flow ITR finds your Drive. Your documents are then stored in
+  your Google account; what Flow ITR produces stays in the Flow home. Let Drive finish syncing
   before opening the same return on another computer.
 - **Moving the whole home:** set the `FLOW_HOME` environment variable, or put a
   file called `flow.local.json` next to `flow.cmd` containing
@@ -288,13 +299,13 @@ example to compare the old and new regimes.
 
 ### Excel
 
-Press **Export to Excel** on the Hand-off page and Flow writes `results.xlsx`
+Press **Export to Excel** on the Hand-off page and Flow ITR writes `results.xlsx`
 into the return's results folder: a summary, one sheet per schedule, the
 capital gains ledger, the reconciliation, the comparison with a filed return,
 and the list of documents. The PAN and account numbers are left out, so it is
 safe to send to your accountant. Export again after figures change; or, under
 Returns, set "Export results to Excel" to "After every
-computation" and Flow keeps the workbook up to date by itself.
+computation" and Flow ITR keeps the workbook up to date by itself.
 
 ---
 
@@ -315,9 +326,9 @@ computation" and Flow keeps the workbook up to date by itself.
 | What you see | What to do |
 |---|---|
 | "Python was not found" | Install Python (step 1), then close and reopen the window. |
-| The window says `engine … NOT FOUND` | Install an engine and sign in (step 2), then start Flow again. |
-| "Port 8787 is already in use" | Flow is already running in another window. Use that one, or close it first. |
-| The page says it cannot reach the local agent | The black window was closed. Start Flow again. |
+| The window says `engine … NOT FOUND` | Install an engine and sign in (step 2), then start Flow ITR again. |
+| "Port 8787 is already in use" | Flow ITR is already running in another window. Use that one, or close it first. |
+| The page says it cannot reach the local agent | The black window was closed. Start Flow ITR again. |
 | A schedule shows nothing after reading | Open **Documents** and check the file was sorted to that schedule; press "Sort documents again" after adding files. |
 | The AIS or TIS cannot be opened | Enter the PAN and date of birth under **Returns**. |
 | A reading or sorting is taking too long, or you started the wrong one | Press **Stop** beside it, or open the Activity menu (top right) and press Stop. Nothing from a stopped run is saved. Each request also has a time limit: 30 minutes for Claude and Codex, 120 for a local model, changeable on the Reading engines page. |
@@ -327,9 +338,10 @@ computation" and Flow keeps the workbook up to date by itself.
 
 ## For developers
 
-Design and rationale: [docs/DESIGN.md](docs/DESIGN.md). The program is the
-Python standard library and plain HTML, CSS and JavaScript: nothing to install,
-no build step.
+Design and rationale: [docs/DESIGN.md](docs/DESIGN.md). The name, logo and
+colours shared by the Flow apps: [docs/BRAND.md](docs/BRAND.md). The program is
+the Python standard library and plain HTML, CSS and JavaScript: nothing to
+install, no build step.
 
 ```
 python -m server                # what flow.cmd and flow.sh run
@@ -409,7 +421,7 @@ installed if that one is not.
 |---|---|---|---|
 | `claude` | Claude subscription | Native, no shell | **Yes** — `--add-dir` is the whole world |
 | `codex` | ChatGPT subscription | Runs shell commands (`pdftotext`, Python) | **No** — `-s read-only` sandboxes writes, not reads |
-| `ollama:<model>` | none: runs locally | Flow sends the text it made of each document; the model opens nothing | **Yes**, the tightest: it sees only what is sent |
+| `ollama:<model>` | none: runs locally | Flow ITR sends the text it made of each document; the model opens nothing | **Yes**, the tightest: it sees only what is sent |
 | `mock` | none | Text fixtures only | Yes. Not offered in the UI; `--engine mock` for tests |
 
 An engine is anything implementing `run(Request, on_event) -> Reply` and
@@ -460,7 +472,7 @@ The two browser tools and the restart tool are written for Windows with Edge or 
 
 ## Disclaimer
 
-Flow is a personal tool shared as-is. It is **not tax advice**, not a filing
+Flow ITR is a personal tool shared as-is. It is **not tax advice**, not a filing
 service, and not affiliated with or endorsed by the Income Tax Department of
 India or any bank, broker or other institution named in it. Their names and
 websites appear only to tell you where your own documents come from; the names
