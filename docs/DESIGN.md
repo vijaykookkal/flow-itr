@@ -1,6 +1,8 @@
 # ITR-3 Filing Assistant — System Design
 
-**Status:** design · **Target:** AY 2026-27 (FY 2025-26) · **Mode:** local-first, single user
+**Status:** built (see VERSION); where this document describes something not
+built yet, it says so, and §11 lists it · **Target:** AY 2026-27 (FY 2025-26) ·
+**Mode:** local-first, single user
 
 ---
 
@@ -13,7 +15,7 @@ It is deliberately **not** a filing bot. It does extraction, arithmetic and
 record-keeping; you make the judgement calls. The design goal that outranks
 convenience is this: **three years from now, when a notice arrives asking why
 line X of Schedule CG says what it says, you can answer in under a minute.**
-Every number traces to a file; every change to a number is in git.
+Every number traces to a file; every correction to a number is kept with its reason.
 
 ## 2. Decisions at a glance
 
@@ -26,7 +28,7 @@ Every number traces to a file; every change to a number is in git.
 | Web UI | Static HTML/CSS/JS, no framework, no build step, served by the local agent | A tax form is a form. This must still run in 2031 without an `npm install` |
 | Server | Python 3.10+ standard library only | Clone and run: nothing to install, no toolchain to rot |
 | Money | Integer rupees everywhere. No floats, ever | Floats and tax arithmetic do not mix, and ITR schedules are rupee-rounded anyway |
-| Git role | The repository versions the program. A results folder may be made a private repository of its own, where every AI run is a reviewable commit and a `filed/AY20xx-yy` tag marks what was submitted (§10) | The two have different audiences: the program is shared, the return is not |
+| Git role | The repository versions the program. A results folder may be kept as a private repository of its own, by hand; the program itself commits nothing (§10) | The two have different audiences: the program is shared, the return is not |
 | GitHub Actions | Deferred. Layout is CI-ready (§10) | Source control now, automation when it earns its keep |
 
 ## 3. Repository layout
@@ -183,7 +185,7 @@ carry-forward set-off is strictly worse than computing it:
 | 13 | Set-off & Carry Forward | CYLA, BFLA, CFL, UD | Derive | prior-year `data/` |
 | 14 | Foreign & Special | FSI, TR, FA, SI, EI, PTI, SPI, IF, 5A | Extract + Derive | `09_foreign_assets` |
 | 15 | Assets & Liabilities | Schedule AL | Extract | `08_assets_liabilities` |
-| 16 | Summary | Part B-TI, Part B-TTI, AMT, AMTC, 234A/B/C | Derive | — |
+| 16 | Summary | Part B-TI, Part B-TTI (AMT, AMTC and the 234A/B/C interest lines are printed as nil: not computed, see §9) | Derive | — |
 
 ### A tab owns source specs, not a folder
 
@@ -204,16 +206,22 @@ Two consequences fall out:
 - **Documents are deduplicated by content hash.** People copy a Form 16 into a
   curated folder and leave it in the export too. Without dedup the model sees
   the same employer twice and has every reason to report two.
-- **Archives are reported, not skipped.** Nothing can read inside a `.zip`, and
-  "no business expenses found" must never be the way you learn that.
+- **Archives are opened, or reported.** A `.zip` is unpacked like any other
+  conversion, and routing sees its members -- names, opening text, and which
+  are the same file as a document already in the folder -- so an archive of
+  invoices goes to Books and a download of the whole folder is recognised as a
+  duplicate. A `.rar` or `.7z` cannot be opened and is reported, because "no
+  business expenses found" must never be the way you learn that.
 
 ### Formats the engine cannot read are converted server-side
 
 The engine has no shell, so it cannot open a spreadsheet — and broker tax P&L
 reports, bank statements and consolidated foreign-income reports are almost
 always `.xlsx`. Rather than hand the model a shell and lose the read-only
-guarantee, `server/convert.py` turns `.xlsx` into one CSV per sheet and `.docx`
-into text, using only the standard library (both are zip archives of XML).
+guarantee, `server/convert.py` turns `.xlsx` into one CSV per sheet, `.docx`
+into text, a PDF into its text (or, when it is a scan, its page images) and a
+`.zip` into its members, each made readable in turn, using only the standard
+library.
 
 Conversions are cached by the original's content hash, written to
 `<home>/.state/cache/`, and granted to the engine alongside the originals. The run
@@ -248,7 +256,8 @@ visual scan rather than an archaeological dig.
  │ 4. spawn: claude -p --output-format stream-json --verbose           │
  │           --allowedTools Read,Glob,Grep                             │
  │           --add-dir <that folder only>                              │
- │ 5. relay stream to the browser over SSE (live progress in the tab)  │
+ │ 5. stream progress back as one JSON line per event (NDJSON) on the  │
+ │    same response; the page shows it live and can stop the run       │
  │ 6. parse final JSON → validate against schema                       │
  │       invalid → --resume with the validator errors (max 2 retries)  │
  │ 7. write extracted/capital_gains.json + _runs/<run_id>.json         │
@@ -257,8 +266,8 @@ visual scan rather than an archaeological dig.
  └─────────────────────────────────────────────────────────────────────┘
         │
         ▼
-  tab re-renders: new values, diff vs previous run, questions[] as a
-  review queue, unmapped[] in a drawer
+  tab re-renders: new values, questions[] into Review, unmapped[] shown
+  with the schedule (no run-to-run diff view yet: §11)
 ```
 
 Two properties fall out of this and are worth protecting:
@@ -270,27 +279,50 @@ Two properties fall out of this and are worth protecting:
 
 ## 8. Local agent API
 
-Binds `127.0.0.1` only. A random token is minted at startup and injected into
-`index.html`; every mutating request must carry it, and the `Origin` header is
-checked. That is enough to stop a random web page in another tab from driving
-your tax return.
+Binds `127.0.0.1` only, and three checks keep every other web page out:
+
+- **Host.** Every request, the page itself included, must name `127.0.0.1` or
+  `localhost` on this port. A page elsewhere can point a name it controls at
+  127.0.0.1 (DNS rebinding); its requests then arrive here but still carry the
+  other name, and are refused (421) before the page, and the token in it, is
+  served.
+- **Token.** Minted once, kept in the home, injected into `index.html`; every
+  API request must carry it, compared in constant time.
+- **Origin.** Where a browser sends one, on reads and writes alike, it must be
+  this server's own.
+
+`tests/test_server_guard.py` runs the real server on a spare port and checks all
+three the way a hostile page would.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/state?ay=` | All resolved schedules, tab statuses, last-run metadata |
-| `GET` | `/api/sources?ay=&schedule=` | File manifest for a tab — shows what *will* be read |
-| `POST` | `/api/run` | Start an extraction. Returns `run_id` |
-| `GET` | `/api/run/{id}/events` | SSE stream of live progress |
+| `GET` | `/api/state?ay=` | Every tab, its resolved schedule and status, the profiles, engines and activity |
+| `GET` | `/api/sources?ay=&tab=` | What a tab *will* read, before it reads it |
+| `GET` | `/api/schema?tab=` | A tab's JSON schema, for drawing it |
+| `GET` | `/api/excerpt`, `/api/file` | The cited line of a document, and the document itself |
+| `GET` | `/api/doc?name=` | README, CHANGELOG or LICENSE, for the Help page |
+| `GET` | `/api/version` | The page's own version, to notice it has changed underneath |
+| `POST` | `/api/run` | Read a tab's documents. Progress streams back as NDJSON on the same response |
+| `POST` | `/api/classify`, `/api/assign` | Route the documents to tabs; correct one routing by hand |
+| `POST` | `/api/reconcile` | Compare a tab with the AIS, TIS and Form 26AS (streams) |
 | `POST` | `/api/override` | Record a correction (pointer, value, reason) |
-| `POST` | `/api/compute?ay=` | Run the deterministic engine over the derived tabs |
-| `GET` | `/api/diff?schedule=&run=` | This run versus the previous one |
-| `POST` | `/api/commit` | Stage and commit the AY's `data/` with a run-linked message |
-| `GET` | `/api/export?ay=` | ITR-3 JSON in the department's utility schema |
+| `POST` | `/api/compute` | Run the deterministic engine over the derived tabs |
+| `POST` | `/api/decisions`, `/api/handoff` | Settle a review item; tick a hand-off row as entered |
+| `POST` | `/api/fx`, `/api/fx/lookup` | Enter, or look up, an SBI TT buying rate |
+| `POST` | `/api/export` | Write `results.xlsx` to the results folder |
+| `POST` | `/api/profiles`, `/api/open-folder` | Returns and their folders |
+| `GET`/`POST` | `/api/settings`, `/api/models` | Reading-engine settings; Ollama models |
+| `POST` | `/api/stop` | Stop a run under way |
+
+Not built, and listed in §11: an ITR-3 JSON export in the utility's schema, a
+run-to-run diff, and committing results to git from the page.
 
 ## 9. The deterministic engine
 
-Everything the tax code defines as arithmetic lives in `engine/` as plain Python
-with unit tests, never in a prompt:
+Everything the tax code defines as arithmetic lives in `engine/` as plain Python,
+never in a prompt. The computation is done once, in `engine/cascade.py`, stage
+by stage; there is no second, simpler calculation for anything to read by
+mistake. What it covers:
 
 - Head-wise aggregation, and the Chapter VI-A ceilings (80C, 80D age slabs, 80G
   qualifying-limit maths, the 10% / 20% of adjusted GTI caps).
@@ -304,21 +336,43 @@ with unit tests, never in a prompt:
   — with the pre-changeover branches kept in code for prior-year re-filings.
 - Old regime versus 115BAC(1A), computed both ways and shown side by side, since
   the new regime is now the default and the choice is a real decision for ITR-3.
-- Surcharge with marginal relief, cess, and 234A/234B/234C interest.
+- The section 87A rebate with marginal relief, kept off tax on special-rate
+  capital gains; unused basic exemption set against those gains.
+- Surcharge with marginal relief measured from the tax and surcharge at the
+  threshold itself, capped at 15% on capital gains; cess.
+
+**Not computed:** interest under sections 234A, 234B and 234C, the fee under
+234F, and AMT. Their lines are printed as nil, the comparison with a filed
+return names them as the reason for the difference, and the e-filing utility
+works them out.
+
+**Tests.** `tests/` holds worked cases with the arithmetic in comments beside
+each figure: the slabs of both regimes and every age band, the 87A rebate and
+its marginal relief, the rebate stopping at capital-gains tax, unused basic
+exemption, the 112A exemption, the surcharge bands, marginal relief at ₹50 lakh
+and ₹1 crore, the 15% cap on gains, and the set-off rules (dearest gain first,
+long-term losses only against long-term gains, speculative losses
+ring-fenced, a business loss kept off salary, the house-property loss blocked
+in the new regime and capped at ₹2 lakh in the old). Run them with
+`python -m unittest discover -s tests -t .`. Not yet tested: Chapter VI-A
+ceilings, the capital-gains rate split by date, and an end-to-end return.
 
 The engine is also the **audit of the AI**: where a schedule is both extracted and
 computable (Part B-TI totals, Schedule BP against the P&L, TDS totals against
-26AS), it recomputes and flags any disagreement instead of trusting the model.
+26AS, a stated total against the sum of its rows), it recomputes and flags any
+disagreement instead of trusting the model.
 
-Rates, slabs and limits live in `engine/rates/AY2026-27.py` — one file per year,
+Rates, slabs and limits live in `engine/rates/ay2026_27.py` — one file per year,
 never hardcoded inline, because next year you change one file.
 
 ## 10. Git, and the GitOps story
 
 This section is about a **results folder kept as its own private repository**,
-which is optional. The program's repository holds no return (§15).
+which is optional and done by hand: the program commits nothing, and has no
+commit button. The program's repository holds no return (§15). Built: the
+pre-commit hook for the program's repository (`tools/check_private.py`).
 
-Working now, without CI:
+A way of working that suits it, without CI:
 
 - The results folder is the desired state; the UI is a view over it. Nothing is
   authoritative unless it is committed.
@@ -327,7 +381,7 @@ Working now, without CI:
   diff of a re-run against last week's is the review, and the review is the point.
 - `overrides/` commits separately from `extracted/` so the two histories stay
   legible.
-- When you actually submit, tag `filed/AY2026-27` and attach the exported utility
+- When you actually submit, tag `filed/AY2026-27` and attach the utility's own
   JSON and the acknowledgement. That tag is what you reconstruct from if the
   department ever asks.
 - In the program's repository, a `pre-commit` hook that greps staged files for
@@ -347,6 +401,19 @@ your documents or an API key:
 
 ## 11. Designed-for, not built-now
 
+- **Export in the utility's JSON schema.** The hand-off is the form's own line
+  numbers to type in, and `results.xlsx`; a file the utility could import would
+  need a mapping layer to the department's schema for each year.
+- **Interest under 234A/B/C and the 234F fee.** Left to the utility, which
+  computes them from the filing date.
+- **A run-to-run diff**, and **committing results from the page**. Each run's
+  manifest is kept in `_runs/`, and a results folder can be a git repository by
+  hand (§10), but neither is a feature of the page.
+- **A row count for statements the model transcribes.** Spreadsheets are
+  already read row by row by code (`server/tabular.py`: the count is exact, a
+  row that cannot be parsed is reported). A PDF bank or broker statement is
+  transcribed by the model, and nothing yet compares the rows it returned with
+  the rows on the page.
 - **Google Drive through its API.** Built now is the simple half: a Drive synced
   by Drive for desktop is a folder, and a profile is pointed at it (§15). Reading
   a Drive without the desktop app would be a second resolver in
@@ -366,11 +433,12 @@ your documents or an API key:
 | Risk | Mitigation |
 |---|---|
 | AI misreads a number and it looks plausible | Per-field citations; the engine recomputes what it can; `git diff` between runs surfaces drift |
-| The model quietly omits a transaction | `unmapped[]` plus a count reconciliation — number of broker rows in versus rows out |
-| Schema drift when the department releases the AY 2026-27 ITR-3 utility | `schema_version` on every file, plus a mapping layer between our shape and the utility's shape, isolated in `engine/export/` |
+| The model quietly omits a transaction | Spreadsheets are read row by row by code, with an exact count. Stated totals are recomputed from rows. The AIS/TIS/26AS reconciliation and the filed-return comparison check against figures the tool did not produce. Not yet: a row count for PDF statements the model transcribes (§11) |
+| Schema drift when the department releases the AY 2026-27 ITR-3 utility | `schema_version` on every file; line numbers taken from a filed ITR-3 for the year, and to be checked against the released utility |
+| Sensitive data at rest | PAN and date of birth are kept in plain text in `profiles.json` (they open the AIS and TIS), and the results folder is plain JSON, beside the original documents, which are unencrypted too. All of it is in the user's own folder, never the repository; full-disk encryption (BitLocker, FileVault) is the protection the README recommends |
 | Prompt changes silently alter past results | `prompt_version` is recorded in every output and feeds the fingerprint |
 | Large PDFs blow the context window | Per-file extraction with a merge step for bank statements and broker reports; the run manifest records the split |
-| Tax rules in this document are my reading, not a filing | The engine has tests keyed to sections; verify against the released utility before filing. **This system produces a draft for your review, never a filing.** |
+| Tax rules in this document are my reading, not a filing | Worked cases in `tests/` for the rules that are easiest to get wrong (§9); verify against the released utility before filing. **This system produces a draft for your review, never a filing.** |
 
 ## 13. Build order
 
@@ -378,11 +446,12 @@ your documents or an API key:
    Paid), the three-layer merge, and git wiring. Nothing else matters if this is wrong.
 2. **Local agent + one real extraction** — prove `claude -p` against a real Form 16
    end to end, including the validation-repair loop.
-3. **The UI shell** — tab chrome, run button, SSE progress, review queue, override editor.
+3. **The UI shell** — tab chrome, run button, streamed progress, review queue, override editor.
 4. **Remaining extract tabs**, hardest first: Capital Gains and 112A scrip-wise
    will take longer than the other twelve combined.
 5. **The engine** — set-off chain, both regimes, Part B-TI/TTI.
-6. **Export** to the department's utility JSON, and the `filed/` tagging ritual.
+6. **Export.** Built as the hand-off in the form's line numbers and
+   `results.xlsx`; an export in the utility's own JSON is not built (§11).
 
 ## 14. The page
 

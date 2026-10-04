@@ -1,4 +1,4 @@
-version: classify@1
+version: classify@2
 
 # Routing documents to ITR-3 schedules
 
@@ -37,8 +37,17 @@ here — only routing.
    little context; under-assigning loses income from the return.
 
 5. **Empty `tabs` is a real answer.** A PAN card, an acknowledgement of last
-   year's return, a duplicate, or a zip archive belongs to no schedule. Say so,
-   and say why. Do not stretch to find a home for it.
+   year's return, or a duplicate belongs to no schedule. Say so, and say why.
+   Do not stretch to find a home for it.
+
+6. **A zip archive is routed by what is inside it.** Its members are listed
+   under it, with the opening text of each and a note where a member is the
+   same file as a document already in the listing. An archive of expense
+   invoices belongs to `books` (and to `depreciation` if it holds asset
+   purchases), exactly as the loose invoices would. An archive whose members
+   are all, or nearly all, marked as the same as documents in the listing is a
+   download of the folder: it is a duplicate, `tabs` is empty, and `why` says
+   so. Never route by the archive's name alone when its members are listed.
 
 ## Things that are commonly misrouted
 
@@ -61,7 +70,8 @@ if the listing shows a file twice under different paths, answer for both.
 
 Put anything the reviewer should know in `notes[]`: a document that looks like a
 duplicate, a period that seems to fall outside the financial year, an archive
-whose contents you cannot see.
+that could not be unpacked (a .rar or .7z, or a damaged zip), whose contents
+nobody has seen.
 
 
 ## Documents the department itself holds

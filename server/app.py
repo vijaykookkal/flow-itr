@@ -1,14 +1,23 @@
 """The local agent: a static file server for web/ plus the API the page calls.
 
-Binds 127.0.0.1 and nothing else. A token is minted at startup and injected
-into index.html; every API call must present it, and the Origin header is
-checked on writes. That is enough to stop a page open in another browser tab
-from quietly driving your tax return.
+Binds 127.0.0.1 and nothing else, and three checks keep every other web page
+out of your return:
+
+  * **Host.** Every request, the page itself included, must be addressed to
+    127.0.0.1 or localhost on this port. A page elsewhere can point a name it
+    controls at 127.0.0.1 (DNS rebinding); its requests then reach this server,
+    but still name the other site in Host, and are refused before anything --
+    the page and the token in it above all -- is served.
+  * **Token.** Minted once and injected into index.html; every API call must
+    present it, compared in constant time.
+  * **Origin.** When a browser states one, it must be this server's own, on
+    reads as well as writes.
 """
 
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import mimetypes
 import secrets
@@ -308,8 +317,20 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _own_hosts(self) -> set[str]:
+        # The port actually bound, so a test server on a spare port checks the same way.
+        port = self.server.server_address[1]
+        return {f"127.0.0.1:{port}", f"localhost:{port}"}
+
+    def _host_ok(self) -> bool:
+        """Refuse a request addressed to any other name: the DNS-rebinding guard."""
+        if (self.headers.get("Host") or "").strip().lower() in self._own_hosts():
+            return True
+        self._json({"error": "this server answers only to 127.0.0.1 or localhost"}, 421)
+        return False
+
     def _authorised(self) -> bool:
-        if self.headers.get("X-ITR-Token") == TOKEN:
+        if hmac.compare_digest((self.headers.get("X-ITR-Token") or "").encode(), TOKEN.encode()):
             return True
         self._json({"error": "bad or missing token"}, 403)
         return False
@@ -317,8 +338,9 @@ class Handler(BaseHTTPRequestHandler):
     def _origin_ok(self) -> bool:
         origin = self.headers.get("Origin")
         # localhost and 127.0.0.1 are the same server but different origins,
-        # and people type either one.
-        if origin in (None, ORIGIN, f"http://localhost:{PORT}"):
+        # and people type either one. No Origin at all is a same-origin read,
+        # or a tool that is not a browser; the Host check has already run.
+        if origin is None or origin.lower() in {f"http://{h}" for h in self._own_hosts()}:
             return True
         self._json({"error": f"origin {origin} not allowed"}, 403)
         return False
@@ -329,14 +351,18 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- routing --------------------------------------------------------
     def do_GET(self):
+        if not self._host_ok():
+            return
         url = urlparse(self.path)
         if url.path.startswith("/api/"):
-            if not self._authorised():
+            if not self._authorised() or not self._origin_ok():
                 return
             return self._api_get(url)
         return self._static(url.path)
 
     def do_POST(self):
+        if not self._host_ok():
+            return
         url = urlparse(self.path)
         if not url.path.startswith("/api/"):
             return self._json({"error": "not found"}, 404)

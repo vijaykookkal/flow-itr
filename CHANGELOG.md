@@ -3,6 +3,37 @@
 Changes worth knowing about, newest first. Flow is a draft-preparing tool:
 check every figure against the e-filing utility before you file.
 
+## Unreleased
+
+**Zip archives are read.** A `.zip` in the documents folder is now opened when
+documents are sorted, and routed by what is inside it: an archive of expense
+invoices goes to Books like the loose invoices would, and a download of the
+whole folder is recognised as a duplicate. Before, an archive was routed by its
+name alone, and usually to nothing. Sort the documents again to pick this up.
+
+**Surcharge marginal relief corrected.** Relief is now measured, as the Act
+requires, from the tax and surcharge on an income of exactly the threshold.
+Before, it capped the surcharge alone at the income above the threshold, which
+charged a little too much just above ₹50 lakh and much too little just above
+₹1 crore, ₹2 crore and ₹5 crore. Returns away from those thresholds are
+unchanged.
+
+**One computation.** An older, simpler tax calculation that the staged
+computation had replaced is gone, so nothing can show its figures by mistake.
+
+**Tests.** Worked cases for the slabs, the 87A rebate and its marginal relief,
+surcharge, the 15% cap on capital gains, loss set-off, the server's guard and
+archive routing: `python -m unittest discover -s tests -t .`
+
+**The local server answers only to itself.** Every request must be addressed
+to 127.0.0.1 or localhost, which stops a web page elsewhere from reaching it by
+DNS rebinding; the token is compared in constant time; and another site's
+origin is refused on reads as well as writes.
+
+**Documentation.** The design document now says what is built and what is
+planned. The README says plainly that nothing in the Flow folder is encrypted
+and recommends full-disk encryption.
+
 ## 0.2.0 (3 October 2026)
 
 **Read with an open model on your own computer.** Flow can now read documents

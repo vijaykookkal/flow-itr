@@ -91,7 +91,9 @@ Flow. The window also tells you where your folders are:
 ### 5. Add your documents
 
 Copy the year's documents into the **documents** folder shown above. Sub-folders
-are fine, and nothing needs renaming or sorting. Useful ones:
+are fine, and nothing needs renaming or sorting. A `.zip` is fine too: Flow
+opens it and routes it by what is inside (a `.rar` or `.7z` it cannot open, and
+says so). Useful ones:
 
 - Form 16 and Form 12BA from your employer
 - AIS, TIS and Form 26AS, downloaded from the income-tax portal
@@ -220,8 +222,13 @@ flow/
   in with. That is the only place your documents go.
 - **Back it up** by copying the `flow` folder. To move to a new computer, copy
   that folder across and install Flow there.
-- The `results` folder holds your income, PAN and bank details in a form that is
-  easy to read. Treat it like the documents themselves.
+- **Nothing in the `flow` folder is encrypted.** `profiles.json` holds each
+  return's PAN and date of birth in plain text (they are what opens the AIS and
+  TIS), and the `results` folder holds your income and bank details in a form
+  that is easy to read, next to the documents themselves. Anyone who can open
+  your user folder can read them. Turn on full-disk encryption (BitLocker on
+  Windows, FileVault on a Mac), keep the folder out of shared or public cloud
+  folders, and treat a copy of it like the documents themselves.
 
 ### More than one return
 
@@ -299,8 +306,25 @@ python -m server                # what flow.cmd and flow.sh run
 python -m server --no-browser
 ```
 
-The page binds to loopback only and authenticates with a token minted on first
-start. It loads nothing from the network: the typefaces are in `web/fonts/`.
+The page binds to loopback only. Every request must be addressed to
+`127.0.0.1` or `localhost` (which stops DNS rebinding), every API call must
+carry a token minted on first start, compared in constant time, and a browser's
+`Origin`, where it sends one, must be the page's own. It loads nothing from the
+network: the typefaces are in `web/fonts/`.
+
+### Tests
+
+```
+python -m unittest discover -s tests -t .
+```
+
+Worked cases for the tax rules that are easiest to get wrong, each with its
+arithmetic in a comment: slabs in both regimes, the 87A rebate and its marginal
+relief, the rebate stopping at capital-gains tax, the 112A exemption, the
+surcharge bands with marginal relief and the 15% cap on gains, and loss set-off.
+Also the server's refusal of other hosts, other origins and a missing token,
+and routing's view inside a zip. They need no documents, no engine and no
+network, and never touch your Flow home.
 
 ### Layout
 
@@ -311,8 +335,9 @@ engine/              deterministic tax computation
 server/              local agent: HTTP API, engine drivers, Excel export
 web/                 the page: app.js (schedules), charts.js (graphics),
                      pages.js (areas), shell.js (frame)
+tests/               worked cases for the tax rules, the server's guard, archive routing
 tools/               checks used while developing
-fixtures/            invented documents for tests
+fixtures/            invented documents for development
 ```
 
 Inside a return's results folder:
@@ -392,6 +417,7 @@ python tools/check_private.py --all       # check everything, any time
 ### After changing the page or the server
 
 ```
+python -m unittest discover -s tests -t .   # the tax rules and the server's guard
 python tools/check_js.py       # the faults that blank a page without an error
 python tools/check_page.py     # opens every place in headless Edge or Chrome
 python tools/probe_page.py out.png salary "click:.money@0"   # click, then screenshot

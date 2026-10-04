@@ -59,13 +59,18 @@ def tab_ids() -> list[str]:
 def run(exe: str, route: str, extra: list[str]) -> tuple[str, str]:
     # Its own profile folder, so several can run at once without one waiting
     # on another's lock -- and so nothing here touches the real browser profile.
-    with tempfile.TemporaryDirectory(prefix="flow-check-") as profile:
-        done = subprocess.run(
-            [exe, "--headless=new", "--disable-gpu", "--no-first-run", "--disable-extensions",
-             f"--user-data-dir={profile}", "--enable-logging=stderr", "--v=0",
-             "--virtual-time-budget=25000", *extra, f"{BASE}/#{route}"],
-            capture_output=True, timeout=180)
-    return done.stdout.decode("utf-8", "replace"), done.stderr.decode("utf-8", "replace")
+    # Output goes to files, not pipes, and the older headless mode is used:
+    # while an Edge update is waiting to be applied, a piped `--headless=new`
+    # launch comes back empty, which would read as a blank page.
+    with tempfile.TemporaryDirectory(prefix="flow-check-", ignore_cleanup_errors=True) as profile:
+        out, err = Path(profile) / "_out.txt", Path(profile) / "_err.txt"
+        with out.open("wb") as o, err.open("wb") as e:
+            subprocess.run(
+                [exe, "--headless", "--disable-gpu", "--no-first-run", "--disable-extensions",
+                 f"--user-data-dir={profile}", "--enable-logging=stderr", "--v=0",
+                 "--virtual-time-budget=25000", *extra, f"{BASE}/#{route}"],
+                stdout=o, stderr=e, stdin=subprocess.DEVNULL, timeout=180)
+        return out.read_bytes().decode("utf-8", "replace"), err.read_bytes().decode("utf-8", "replace")
 
 
 def check(exe: str, route: str, shots: Path | None) -> list[str]:

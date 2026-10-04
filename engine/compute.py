@@ -57,29 +57,6 @@ def _amt(node, default: int = 0) -> int:
     return int(node)
 
 
-def slab_tax(income: int, slabs) -> int:
-    tax, lower = 0.0, 0
-    for bound, rate in slabs:
-        if bound is None:
-            tax += max(0, income - lower) * rate
-            break
-        if income > bound:
-            tax += (bound - lower) * rate
-            lower = bound
-        else:
-            tax += max(0, income - lower) * rate
-            break
-    return int(round(tax))
-
-
-def surcharge(tax: int, total_income: int, bands) -> tuple[int, float]:
-    rate = 0.0
-    for threshold, r in bands:
-        if total_income > threshold:
-            rate = r
-    return int(round(tax * rate)), rate
-
-
 # --------------------------------------------------------------------------
 # Head-wise income
 # --------------------------------------------------------------------------
@@ -327,44 +304,11 @@ def tax_for_regime(docs: dict, rates, regime: str, profile: dict) -> dict:
         cg, getattr(rates, "AY", "2026-27"),
         (docs.get("capital_gains") or {}).get("data", {}).get("deductions"))
 
-    # Capital gains taxed at a special rate are NOT part of slab income, and
-    # Chapter VI-A deductions cannot be set against them. Keeping them apart is
-    # the whole reason Part B-TI separates "income chargeable at special rates".
-    special, special_tax = [], 0
-    slab_cg = 0
-    for key, b in sorted(cg.get("buckets", {}).items()):
-        taxable = b.get("taxable", b["gain"])
-        if b["rate"] is None:
-            slab_cg += taxable          # short-term at slab rates
-            continue
-        tax = int(round(max(0, taxable) * b["rate"]))
-        special_tax += tax
-        special.append({"section": b["section"], "term": b["term"], "rate": b["rate"],
-                        "taxable": taxable, "tax": tax})
-
-    gti = sal["net"] + os_h["net"] + slab_cg + sum(s["taxable"] for s in special)
-    slab_income = max(0, sal["net"] + os_h["net"] + slab_cg - via["total_allowed"])
-    slab_income = int(round(slab_income / 10.0) * 10)  # section 288A
-    total_income = int(round((slab_income + sum(s["taxable"] for s in special)) / 10.0) * 10)
-
-    # The old regime's basic exemption rises with age; the new regime's does not.
-    slabs = (rates.SLABS_OLD_BY_AGE.get(profile.get("age_band", "below_60"), rates.SLABS_OLD)
-             if regime == "old" else rates.SLABS_NEW)
-    base = slab_tax(slab_income, slabs) + special_tax
-
-    reb = rates.REBATE_87A_OLD if regime == "old" else rates.REBATE_87A_NEW
-    rebate = min(base, reb["max_rebate"]) if total_income <= reb["income_ceiling"] else 0
-
-    after_rebate = base - rebate
-    bands = rates.SURCHARGE_OLD if regime == "old" else rates.SURCHARGE_NEW
-    sur, sur_rate = surcharge(after_rebate, total_income, bands)
-    cess = int(round((after_rebate + sur) * rates.CESS_RATE))
-    total_tax = after_rebate + sur + cess
-
-    # The same computation, stage by stage, with the rule behind each figure.
-    # It supersedes the flat totals above: it applies the loss set-offs, keeps
-    # the 87A rebate away from capital-gains tax, and allows unused basic
-    # exemption against special-rate gains.
+    # The tax itself is worked out once, stage by stage, in cascade.py: the
+    # loss set-offs, Chapter VI-A against ordinary income only, each special
+    # rate on its own slice, the 87A rebate kept off capital-gains tax, and
+    # surcharge with its cap and marginal relief. There is no second, simpler
+    # calculation anywhere for a page to read by mistake.
     parts = {
         "salary": sal, "other_sources": os_h, "chapter_via": via,
         "capital_gains": cg, "business": business,
@@ -394,10 +338,7 @@ def tax_for_regime(docs: dict, rates, regime: str, profile: dict) -> dict:
     return {
         "regime": regime,
         "cascade": staged,
-        "heads": {"salary": sal, "other_sources": os_h,
-                  "capital_gains": {"net": slab_cg + sum(s["taxable"] for s in special),
-                                    "at_slab": slab_cg, "special": special,
-                                    "special_tax": special_tax}},
+        "heads": {"salary": sal, "other_sources": os_h},
         "capital_gains": cg,
         # The section 112A sales again, in that schedule's own columns. Built
         # from the same ledger rows, so it cannot differ from Schedule CG.
@@ -418,15 +359,7 @@ def tax_for_regime(docs: dict, rates, regime: str, profile: dict) -> dict:
         # surcharge and cess that ride on it. Used to size an open question --
         # "if this credit is income, about this much tax" -- never to compute.
         "marginal_rate": round(slab_rate * loading, 6),
-        "gross_total_income": gti,
         "chapter_via": via,
-        "total_income": total_income,
-        "tax_at_slab": base,
-        "rebate_87a": rebate,
-        "surcharge": sur,
-        "surcharge_rate": sur_rate,
-        "cess": cess,
-        "total_tax_liability": total_tax,
     }
 
 
@@ -533,12 +466,13 @@ def summarise(ay: str, docs: dict, missing_tabs: list[str], profile: dict | None
     paid = _amt(tax_doc["data"].get("total_taxes_paid")) if tax_doc else 0
 
     # Everything said at the top of the summary is read off the staged
-    # computation, the same one Part B-TTI is drawn from. The flat totals above
-    # it leave out business income and the loss set-offs, so a balance taken
-    # from them contradicts the line 11 printed further down.
+    # computation, the same one Part B-TTI is drawn from, so the balance can
+    # never contradict the line 11 printed further down.
+    def totals_of(regime: dict) -> dict:
+        return regime["cascade"]["totals"]
+
     def liability(regime: dict) -> int:
-        totals = (regime.get("cascade") or {}).get("totals") or {}
-        return totals.get("net_tax_liability", regime["total_tax_liability"])
+        return totals_of(regime)["net_tax_liability"]
 
     lower = "new" if liability(new) <= liability(old) else "old"
     # An elected regime is respected even when it costs more -- the election is
@@ -574,13 +508,10 @@ def summarise(ay: str, docs: dict, missing_tabs: list[str], profile: dict | None
         "regime_is_elected": elected != "compare",
         "election_costs": liability(chosen) - min(liability(old), liability(new)),
         "saving_versus_other": abs(liability(old) - liability(new)),
-        "taxes_already_paid": ((chosen.get("cascade") or {}).get("totals") or {})
-                              .get("taxes_paid", paid),
+        "taxes_already_paid": totals_of(chosen).get("taxes_paid", paid),
         "balance": {
-            "payable": ((chosen.get("cascade") or {}).get("totals") or {})
-                       .get("payable", max(0, chosen["total_tax_liability"] - paid)),
-            "refund": ((chosen.get("cascade") or {}).get("totals") or {})
-                      .get("refund", max(0, paid - chosen["total_tax_liability"])),
+            "payable": totals_of(chosen)["payable"],
+            "refund": totals_of(chosen)["refund"],
         },
         "checks": checks(docs, old, new),
         "contributors": contributors,

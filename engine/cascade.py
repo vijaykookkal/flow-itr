@@ -337,14 +337,37 @@ def tax_on_slices(slab_income: int, specials: list[dict], rates, regime: str,
             "special_tax": special_tax, "basic_exemption_spare": spare, "notes": notes}
 
 
+def tax_with_income_cut(slab_income: int, specials: list[dict], rates, regime: str,
+                        age_band: str, cut: int) -> tuple[int, int]:
+    """(slab tax, special tax) had total income been `cut` rupees lower.
+
+    Marginal relief on surcharge compares the tax on the actual income with
+    the tax at the threshold, so the tax at the threshold has to be worked out.
+    The rupees above the threshold are taken off ordinary income first, the
+    slice at the margin, and only then off the cheapest special-rate slice."""
+    left = max(0, int(cut))
+    slab = max(0, slab_income - left)
+    left -= slab_income - slab
+    trimmed = []
+    for s in sorted(specials, key=lambda s: s["rate"]):
+        take = min(left, pos(s["amount"]))
+        left -= take
+        trimmed.append({**s, "amount": pos(s["amount"]) - take})
+    at = tax_on_slices(slab, trimmed, rates, regime, age_band)
+    return at["slab_tax"], at["special_tax"]
+
+
 def rebate_and_surcharge(slab_tax: int, special_tax: int, total_income: int,
-                         rates, regime: str) -> dict:
+                         rates, regime: str, tax_at_threshold=None) -> dict:
     """Rebate (with marginal relief), then surcharge, then cess.
 
     Two things here are routinely got wrong. The section 87A rebate cannot
     reduce tax on capital gains taxed at a special rate, however low total
     income is. And surcharge on those gains is capped at 15% even when the rest
-    of the income attracts a higher band."""
+    of the income attracts a higher band.
+
+    `tax_at_threshold(cut)` gives (slab tax, special tax) on the income less
+    `cut`; marginal relief on surcharge needs it (see tax_with_income_cut)."""
     notes = []
     reb = rates.REBATE_87A_OLD if regime == "old" else rates.REBATE_87A_NEW
     rebate, relief = 0, 0
@@ -377,9 +400,10 @@ def rebate_and_surcharge(slab_tax: int, special_tax: int, total_income: int,
     after_rebate = max(0, slab_tax + special_tax - rebate)
 
     bands = rates.SURCHARGE_OLD if regime == "old" else rates.SURCHARGE_NEW
-    rate, band_floor = 0.0, 0
+    rate, band_floor, rate_below = 0.0, 0, 0.0
     for floor, band_rate in bands:
         if total_income > floor:
+            rate_below = rate
             rate, band_floor = band_rate, floor
     sur, sur_relief = 0, 0
     on_special, on_rest = 0, 0
@@ -395,16 +419,29 @@ def rebate_and_surcharge(slab_tax: int, special_tax: int, total_income: int,
             notes.append(f"Surcharge on capital gains is capped at "
                          f"{SURCHARGE_CAP_ON_CG * 100:g}%, so {money(special_tax)} of "
                          f"capital-gains tax bears {cg_rate * 100:g}% rather than {rate * 100:g}%.")
-        # Marginal relief: crossing a band cannot cost more than the income that
-        # crossed it.
+        # Marginal relief: the tax and surcharge on the actual income may exceed
+        # the tax and surcharge on an income of exactly the threshold by no more
+        # than the income above the threshold. At the threshold the surcharge
+        # is the band below's (nil at the first band). Every threshold is far
+        # above the 87A ceiling, so no rebate enters either side.
         over = total_income - band_floor
-        tax_at_band = after_rebate      # an approximation of the tax at the threshold
-        if after_rebate + sur - tax_at_band > over:
-            sur_relief = int(round(after_rebate + sur - tax_at_band - over))
-            sur = max(0, sur - sur_relief)
-            notes.append(f"Marginal relief on surcharge of {money(sur_relief)}: crossing "
-                         f"{money(band_floor)} by {money(over)} cannot cost more than "
-                         f"{money(over)} in extra tax.")
+        if tax_at_threshold is not None:
+            slab_at, special_at = tax_at_threshold(over)
+        else:                           # no way to recompute: assume the same tax
+            slab_at, special_at = max(0, slab_tax - rebate), special_tax
+        sur_at = (int(round(slab_at * rate_below))
+                  + int(round(special_at * min(rate_below, SURCHARGE_CAP_ON_CG))))
+        allowed = slab_at + special_at + sur_at + over
+        excess = after_rebate + sur - allowed
+        if excess > 0:
+            sur_relief = min(sur, int(round(excess)))
+            sur -= sur_relief
+            notes.append(
+                f"Marginal relief on surcharge of {money(sur_relief)}: at exactly "
+                f"{money(band_floor)} the tax and surcharge would be "
+                f"{money(slab_at + special_at + sur_at)}, and crossing it by {money(over)} "
+                f"may not add more than {money(over)}. (proviso to the surcharge rates, "
+                f"Finance Act)")
 
     cess = int(round((after_rebate + sur) * rates.CESS_RATE))
     notes.append(f"Health and education cess at {rates.CESS_RATE * 100:g}% on "
@@ -688,8 +725,10 @@ def build(docs: dict, rates, regime: str, profile: dict, parts: dict) -> dict:
     })
 
     # ---- Stage 7: rebate, surcharge, cess ------------------------------
-    final = rebate_and_surcharge(sliced["slab_tax"], sliced["special_tax"], total_income,
-                                 rates, regime)
+    final = rebate_and_surcharge(
+        sliced["slab_tax"], sliced["special_tax"], total_income, rates, regime,
+        tax_at_threshold=lambda cut: tax_with_income_cut(slab_income, specials, rates, regime,
+                                                         age_band, cut))
     sur_before = final["surcharge"] + final["surcharge_marginal_relief"]
     stages.append({
         "no": 7, "code": "Part B-TTI", "title": "Tax payable on total income",

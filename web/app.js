@@ -987,11 +987,11 @@ function renderSummary(s) {
 
   // The other regime, for the one decision this page exists to support.
   const other = s.recommended_regime === 'new' ? 'old' : 'new';
-  const line = (label, key, fmt) =>
+  // Both columns come from the staged computation; there is no other.
+  const line = (label, key) =>
     el('tr', {}, el('td', {}, label),
-       el('td', { class: 'num' }, rupees(chosen.cascade ? chosen.cascade.totals[key] : chosen[key])),
-       el('td', { class: 'num' }, rupees(s.regimes[other].cascade
-         ? s.regimes[other].cascade.totals[key] : s.regimes[other][key])));
+       el('td', { class: 'num' }, rupees(chosen.cascade?.totals[key])),
+       el('td', { class: 'num' }, rupees(s.regimes[other].cascade?.totals[key])));
   out.push(card(
     'The other regime, for comparison',
     table([' ', { t: s.recommended_regime === 'new' ? 'New regime' : 'Old regime', num: true },
@@ -1003,8 +1003,8 @@ function renderSummary(s) {
        line('Surcharge', 'surcharge'),
        line('Cess', 'cess'),
        el('tr', { class: 'total' }, el('td', {}, 'Total tax liability'),
-          el('td', { class: 'num' }, rupees(chosen.cascade?.totals.total_tax_liability ?? chosen.total_tax_liability)),
-          el('td', { class: 'num' }, rupees(s.regimes[other].cascade?.totals.total_tax_liability ?? s.regimes[other].total_tax_liability)))]),
+          el('td', { class: 'num' }, rupees(chosen.cascade?.totals.total_tax_liability)),
+          el('td', { class: 'num' }, rupees(s.regimes[other].cascade?.totals.total_tax_liability)))]),
     '',
     el('span', { class: 'src' },
        s.regime_is_elected
