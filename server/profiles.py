@@ -11,8 +11,8 @@ Three rules shape this:
     in the Flow home (see paths.py), never in the repository: they hold a PAN,
     a date of birth and a year of someone's finances. By convention a profile
     called X keeps its documents in `<home>/X/documents` and everything
-    produced from them in `<home>/X/results`; either may be pointed
-    anywhere else, a synced cloud folder included.
+    produced from them in `<home>/X/results`. Documents may be pointed
+    elsewhere; results always follow the return name.
 
   * **Flat, never nested.** An earlier version nested one profile inside
     another's folder, which meant one person's documents could be read into
@@ -26,8 +26,8 @@ Three rules shape this:
     sharing output is a silent overwrite of one return by another, so it is
     refused.
 
-Names, years, folders and settings are all yours to choose. Nothing is derived
-from anything else behind your back.
+Names, years, document folders and settings are all yours to choose. The
+results folder follows the return name so each return's output stays together.
 """
 
 from __future__ import annotations
@@ -114,10 +114,10 @@ FIELDS = {
         "default": "manual",
         "options": [
             {"value": "manual", "label": "Only when asked",
-             "note": "results.xlsx is written to the results folder when you press "
-                     "Export to Excel on the Hand-off page."},
+             "note": "results.xlsx is written when you press Export to Excel on the "
+                     "Hand-off page."},
             {"value": "auto", "label": "After every computation",
-             "note": "Keeps results.xlsx in the results folder in step with the figures."},
+             "note": "Keeps results.xlsx in step with the figures."},
         ],
     },
 }
@@ -163,7 +163,7 @@ def slug(text: str) -> str:
 
 
 def default_dirs(name: str, fy: str = "") -> tuple[str, str]:
-    """A starting point only. Both are yours to change afterwards."""
+    """The conventional documents and results folders for a return."""
     return paths.default_dirs(name)
 
 
@@ -193,7 +193,25 @@ def describe(profile: dict) -> dict:
         resolved = paths.resolve_dir(profile.get(key, ""))
         out[label] = str(resolved)
         out[label + "_exists"] = resolved.is_dir()
+    if profile.get("name"):
+        # What the name says the folders are, and whether they are: a rename
+        # moves what is in the conventional ones along with the name.
+        src, data = default_dirs(profile["name"])
+        folder = paths.resolve_dir(paths.folder_name(profile["name"]))
+        out["folder_path"] = str(folder)
+        out["folder_path_exists"] = folder.is_dir()
+        out["conventional_source_path"] = str(paths.resolve_dir(src))
+        out["conventional_data_path"] = str(paths.resolve_dir(data))
+        out["source_conventional"] = _same(profile.get("source_dir", "")) == _same(src)
+        out["data_conventional"] = _same(profile.get("data_dir", "")) == _same(data)
     return out
+
+
+def _has_files(folder) -> bool:
+    try:
+        return folder.is_dir() and any(folder.iterdir())
+    except OSError:
+        return False
 
 
 # --------------------------------------------------------------------------
@@ -287,7 +305,7 @@ def _same(folder: str) -> str:
         return str(paths.resolve_dir(folder)).lower()
 
 
-def _new(name: str, fy: str, pan: str = "", source_dir: str = "", data_dir: str = "",
+def _new(name: str, fy: str, pan: str = "", source_dir: str = "",
          settings: dict | None = None) -> dict:
     _validate(name, fy, pan)
     src, data = default_dirs(name, fy)
@@ -298,16 +316,16 @@ def _new(name: str, fy: str, pan: str = "", source_dir: str = "", data_dir: str 
         "ay": ay_for(fy),
         "pan": (pan or "").upper(),
         "source_dir": paths.portable_dir(source_dir) or src,
-        "data_dir": paths.portable_dir(data_dir) or data,
+        "data_dir": data,
         "settings": {**defaults(), **(settings or {})},
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
 
-def create(name: str, fy: str = "", pan: str = "", source_dir: str = "", data_dir: str = "",
+def create(name: str, fy: str = "", pan: str = "", source_dir: str = "",
            settings: dict | None = None, activate: bool = True, **_) -> dict:
     store = load_all()
-    profile = _new(name, fy, pan, source_dir, data_dir, settings)
+    profile = _new(name, fy, pan, source_dir, settings)
     if any(p["id"] == profile["id"] for p in store["profiles"]):
         raise ValueError(f"a return named {name!r} already exists")
     _check_data_dir(profile["data_dir"], store, None)
@@ -331,8 +349,21 @@ def update(profile_id: str, patch: dict) -> dict:
     pan = patch.get("pan", profile["pan"])
     _validate(name, fy, pan)
 
-    if "data_dir" in patch:
-        _check_data_dir(patch["data_dir"], store, profile_id)
+    source_dir = ""
+    if patch.get("source_dir"):
+        wanted = paths.resolve_dir(patch["source_dir"].replace("\\", "/"))
+        if not wanted.is_dir():
+            raise ValueError(f"there is no folder at {wanted}. Check the path, or create the folder first.")
+        source_dir = paths.portable_dir(patch["source_dir"].replace("\\", "/"))
+
+    # The return's folder follows its name, so a rename is a move of that
+    # folder and is refused unless the move was asked for: the page warns
+    # first. Every refusal comes before anything on disk is touched.
+    if _same(default_dirs(name)[1]) != _same(default_dirs(profile["name"])[1]):
+        if not patch.get("move_folder"):
+            raise ValueError("renaming a return moves its folder to the new name; "
+                             "confirm the move to rename it")
+        _follow_name(store, profile, name, carry_documents=not source_dir)
 
     profile.update({
         "name": name.strip(),
@@ -340,13 +371,8 @@ def update(profile_id: str, patch: dict) -> dict:
         "ay": ay_for(fy),
         "pan": (pan or "").upper(),
     })
-    if patch.get("source_dir"):
-        wanted = paths.resolve_dir(patch["source_dir"].replace("\\", "/"))
-        if not wanted.is_dir():
-            raise ValueError(f"there is no folder at {wanted}. Check the path, or create the folder first.")
-    for key in ("source_dir", "data_dir"):
-        if patch.get(key):
-            profile[key] = paths.portable_dir(patch[key].replace("\\", "/"))
+    if source_dir:
+        profile["source_dir"] = source_dir
 
     for key, value in (patch.get("settings") or {}).items():
         field = FIELDS.get(key)
@@ -372,6 +398,110 @@ def update(profile_id: str, patch: dict) -> dict:
     return profile
 
 
+def _follow_name(store: dict, profile: dict, name: str, carry_documents: bool = True) -> None:
+    """Move a return's folder to where `name` puts it, and point every return
+    that used what moved at the new place.
+
+    The results always go. The documents go too when they are in the
+    return's own folder; another return reading them is pointed there as
+    well, so the old folder is not left behind. Documents kept elsewhere
+    stay where they are. Refused, with nothing touched, if a folder that
+    would be written to already holds something.
+    """
+    new_source, new_data = default_dirs(name)
+    if _same(profile["data_dir"]) == _same(new_data):
+        return
+    _check_data_dir(new_data, store, profile["id"])
+
+    moves = [("data_dir", profile["data_dir"], new_data)]
+    source = profile["source_dir"]
+    if (carry_documents
+            and _same(source) == _same(default_dirs(profile["name"])[0])
+            and _same(source) != _same(new_source)):
+        moves.append(("source_dir", source, new_source))
+    for _, _, target in moves:
+        if _has_files(paths.resolve_dir(target)):
+            raise ValueError(
+                f"{paths.resolve_dir(target)} already has files in it. Move or rename that "
+                "folder first, so nothing in it is mixed up with this return's.")
+
+    readers = [p for p in store["profiles"] if _same(p["source_dir"]) == _same(source)]
+    _move_folders(moves)
+    profile["data_dir"] = new_data
+    if len(moves) > 1:
+        for reader in readers:
+            reader["source_dir"] = new_source
+    _make_results_folder(profile)
+
+
+def _move_folders(moves: list[tuple[str, str, str]]) -> None:
+    """All or nothing. Each folder moves in one rename where it can, so a file
+    held open (results.xlsx in Excel, a PDF in a viewer) stops the change
+    instead of splitting a folder in two; if a later move fails, the earlier
+    ones are put back."""
+    done = []
+    try:
+        for _, old, new in moves:
+            _move_folder(paths.resolve_dir(old), paths.resolve_dir(new))
+            done.append((old, new))
+    except OSError as exc:
+        for old, new in reversed(done):
+            try:
+                _move_folder(paths.resolve_dir(new), paths.resolve_dir(old))
+            except OSError:
+                pass
+        raise ValueError(
+            f"{exc.filename or 'a folder'} could not be moved ({exc.strerror or exc}). "
+            "Close anything open from it and try again. Nothing was changed.") from exc
+    for old, _ in done:
+        _remove_if_empty(paths.resolve_dir(old).parent)
+
+
+def _move_folder(old, new) -> None:
+    if not old.exists():
+        return
+    if new.exists():
+        new.rmdir()                     # only ever empty: checked before anything moved
+    new.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(old), str(new))
+
+
+def _make_results_folder(profile: dict) -> None:
+    """So the new results folder is there to open straight away."""
+    try:
+        paths.resolve_dir(profile["data_dir"]).mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+
+
+def _remove_if_empty(folder) -> None:
+    """A return folder in the home emptied by a rename goes too; anything
+    still in it, or any folder outside the home, is left alone."""
+    try:
+        home = paths.home().resolve()
+        if folder.resolve() != home and folder.resolve().is_relative_to(home) \
+                and not any(folder.iterdir()):
+            folder.rmdir()
+    except OSError:
+        pass
+
+
+def use_conventional_results(profile_id: str) -> dict:
+    """Move a results folder kept elsewhere (as earlier versions allowed)
+    into the return's own folder."""
+    store = load_all()
+    profile = next((p for p in store["profiles"] if p["id"] == profile_id), None)
+    if not profile:
+        raise ValueError(f"no return {profile_id!r}")
+    previous = profile["data_dir"]
+    if _same(previous) == _same(default_dirs(profile["name"])[1]):
+        return {"moved": False, "reason": "already in the return's folder"}
+    _follow_name(store, profile, profile["name"])
+    profile["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    save_all(store)
+    return {"moved": True, "from": previous, "to": profile["data_dir"]}
+
+
 def delete(profile_id: str) -> dict:
     """Removes the profile only. Documents and extracted data stay on disk:
     losing a year of tax work to a mistyped name is not a thing this should do."""
@@ -395,8 +525,8 @@ def move_dir(profile_id: str, field: str, target: str) -> dict:
     shares this source folder, the move is refused -- it would silently
     relocate their documents too.
     """
-    if field not in ("source_dir", "data_dir"):
-        raise ValueError("field must be source_dir or data_dir")
+    if field != "source_dir":
+        raise ValueError("only the documents folder can be moved")
     store = load_all()
     profile = next((p for p in store["profiles"] if p["id"] == profile_id), None)
     if not profile:
@@ -415,24 +545,27 @@ def move_dir(profile_id: str, field: str, target: str) -> dict:
                 f"{', '.join(sharers)} also use this document folder. "
                 "Point them elsewhere first, or change this return's folder without moving files."
             )
-    else:
-        _check_data_dir(target, store, profile_id)
-
     old, new = paths.resolve_dir(current), paths.resolve_dir(target)
     if old.exists():
-        if new.exists() and any(new.iterdir()):
-            raise ValueError(f"{target} already exists and is not empty")
-        new.parent.mkdir(parents=True, exist_ok=True)
-        new.mkdir(exist_ok=True)
-        for child in list(old.iterdir()):
-            if child.resolve() == new.resolve():
-                continue
-            shutil.move(str(child), str(new / child.name))
+        _move_contents(old, new, target)
 
     profile[field] = target
     profile["updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     save_all(store)
     return {"moved": True, "field": field, "from": current, "to": target}
+
+
+def _move_contents(old, new, target: str) -> None:
+    if new.exists() and any(new.iterdir()):
+        raise ValueError(f"{target} already exists and is not empty")
+    if not old.exists():
+        return
+    new.parent.mkdir(parents=True, exist_ok=True)
+    new.mkdir(exist_ok=True)
+    for child in list(old.iterdir()):
+        if child.resolve() == new.resolve():
+            continue
+        shutil.move(str(child), str(new / child.name))
 
 
 def engine_options() -> list[dict]:

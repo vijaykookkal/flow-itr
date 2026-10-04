@@ -1,0 +1,144 @@
+{
+  "title": "Planning notes - data",
+  "description": "What a note, letter or estimate says is still to come in the year: salary, a bonus, interest, sales planned, deductions intended, tax to be deducted. Expectations, not evidence: none of this enters the return. Each is transcribed as stated, with the period it is stated for; the arithmetic is done in code.",
+  "type": "object",
+  "required": [
+    "expectations"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "as_of": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The date the note was written or speaks from, YYYY-MM-DD, where it says."
+    },
+    "expectations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "description",
+          "amount",
+          "per"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "salary",
+              "bonus",
+              "interest",
+              "dividend",
+              "other_income",
+              "capital_gain",
+              "deduction",
+              "tds"
+            ],
+            "description": "salary: regular pay. bonus: a one-off payment from the employer. interest, dividend, other_income: income from other sources. capital_gain: a sale planned or expected, with its gain or loss. deduction: an investment or payment meant for Chapter VI-A (80C, 80D and so on). tds: tax expected to be deducted at source."
+          },
+          "description": {
+            "type": "string",
+            "description": "The note's own words for it, e.g. 'Monthly gross after the April revision'."
+          },
+          "amount": {
+            "$ref": "#/$defs/money",
+            "description": "As stated, in rupees, positive. For a capital gain, the size of the gain or loss; say which in direction."
+          },
+          "per": {
+            "enum": [
+              "month",
+              "year",
+              "once"
+            ],
+            "description": "month: the amount recurs monthly (give from_month and to_month where stated). year: the amount is for the whole financial year. once: a single payment or sale."
+          },
+          "from_month": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}$",
+            "description": "First month a monthly amount applies to, YYYY-MM, where stated."
+          },
+          "to_month": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}$",
+            "description": "Last month a monthly amount applies to, YYYY-MM, where stated."
+          },
+          "on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The date a one-off payment or a sale is expected, YYYY-MM-DD or YYYY-MM, where stated."
+          },
+          "direction": {
+            "enum": [
+              "gain",
+              "loss",
+              null
+            ],
+            "description": "For a capital gain: whether the amount is a gain or a loss."
+          },
+          "asset_class": {
+            "enum": [
+              "equity_stt",
+              "equity_unlisted",
+              "debt_mf_specified",
+              "debt_mf_other",
+              "bonds_debentures",
+              "immovable_property",
+              "gold_jewellery",
+              "foreign_shares",
+              "other",
+              null
+            ],
+            "description": "For a capital gain: what is being sold. equity_stt is shares listed in India and equity funds; foreign_shares is shares listed abroad, such as RSUs of a US employer."
+          },
+          "acquired_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For a capital gain: when what is sold was bought or vested, YYYY-MM-DD, where stated. The holding period, and so the rate, is worked out from it in code."
+          },
+          "term": {
+            "enum": [
+              "short",
+              "long",
+              null
+            ],
+            "description": "For a capital gain: short- or long-term, only where the note itself says so. Leave null when it does not."
+          },
+          "section": {
+            "enum": [
+              "80C",
+              "80CCC",
+              "80CCD(1)",
+              "80CCD(1B)",
+              "80CCD(2)",
+              "80D",
+              "80DD",
+              "80DDB",
+              "80E",
+              "80EEA",
+              "80G",
+              "80GG",
+              "80TTA",
+              "80TTB",
+              "80U",
+              null
+            ],
+            "description": "For a deduction: the section of Chapter VI-A it is meant for, where the note says or it is unambiguous (PPF and ELSS are 80C; health insurance is 80D)."
+          }
+        }
+      }
+    }
+  }
+}

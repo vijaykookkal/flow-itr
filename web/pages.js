@@ -155,7 +155,9 @@ function reviewItems() {
 
   for (const tab of state.tabs) {
     const d = tab.document;
-    if (d && tab.id !== 'summary') {
+    // A planning note's questions are about the plan, not the return: the
+    // Planning page shows them.
+    if (d && tab.id !== 'summary' && tab.kind !== 'plan') {
       for (const q of d.questions || []) {
         if (typeof q === 'string' && q.trim()) add({ tab: tab.id, kind: 'question', text: q, from: 'the reading' });
       }
@@ -1647,9 +1649,9 @@ function profileCard() {
         fact('Date of birth', settings.dob || el('a', { href: '#_profiles' }, 'not entered')),
         fact('Reading engine', engineName)),
       group('Where its files are',
+        fact('Return folder', p.folder_path, 'path'),
         fact('Documents', p.source_path, 'path'),
         fact('', `${plural(docs, 'document')} in it`),
-        fact('Results', p.data_path, 'path'),
         fact('Excel workbook', x ? (x.exists ? `written ${fmtWhen(x.written_at)}` : 'not written yet') : ''))),
     'profile-card', el('a', { class: 'linkish', href: '#_profiles' }, 'Change in Returns'));
 }
@@ -1694,7 +1696,7 @@ function pageOverview() {
     const st = sheetStats(s);
     return { rows: a.rows + st.rows, entered: a.entered + st.entered, changed: a.changed + st.changed };
   }, { rows: 0, entered: 0, changed: 0 });
-  const scheduleTabs = state.tabs.filter((t) => t.kind !== 'derive' && t.id !== 'filed_return');
+  const scheduleTabs = state.tabs.filter((t) => t.kind !== 'derive' && t.kind !== 'plan' && t.id !== 'filed_return');
   const read = scheduleTabs.filter((t) => t.document);
   const empty = scheduleTabs.filter((t) => !t.document && !t.source_count);
   const waiting = scheduleTabs.filter((t) => !t.document && t.source_count);
@@ -2198,10 +2200,10 @@ function guideSteps() {
       lead: 'Flow files nothing. It gives you every schedule in the form’s own line numbers, ready to type into the e-filing utility.',
       does: [
         ['Open ', ui('Hand-off'), '. Pick a schedule on the left, type its lines into the utility and tick each one as you go.'],
-        ['Press ', ui('Export to Excel'), ' to get the whole return as ', ui('results.xlsx'), ' in the results folder, to keep or send to your accountant.'],
+        ['Press ', ui('Export to Excel'), ' to get the whole return as ', ui('results.xlsx'), ', to keep or send to your accountant.'],
         ['Before you submit in the utility, compare its final tax with Flow’s. Interest under sections 234A, 234B and 234C is added by the utility, not by Flow.'],
       ],
-      extra: () => el('div', { class: 'where' }, pathRow('Results', p.data_path)),
+      extra: () => el('div', { class: 'where' }, pathRow('Workbook', state.export?.path)),
       where: 'Left panel › Hand-off',
       go: ['Open Hand-off', '#handoff'] },
   ];
@@ -2331,4 +2333,599 @@ function pageHome() {
     + 'chose, under your own account. ', el('a', { href: '#_profiles' }, 'Where your files are'), '.');
 
   return [hero, how, start, tips, foot];
+}
+
+/* ---------------------------------------------------------------- planning */
+
+/** Everything the Planning page shows, fetched once and kept until the return
+ *  is computed again, its year, age or regime changes, or something is typed.
+ *  The server works all of it out with the return's own rules; the page has
+ *  no tax rule of its own. */
+function planningData() {
+  const summary = state.tabs.find((t) => t.id === 'summary')?.document;
+  const s = state.activeProfile?.settings || {};
+  const key = [state.ay, s.age_band, s.regime, summary?.computed_at].join('|');
+  if (state.planning?.key === key) return state.planning;
+  state.planning = { key, loading: true };
+  getJSON(`/api/planning?ay=${encodeURIComponent(state.ay || '')}`)
+    .then((data) => { if (state.planning?.key === key) state.planning = { key, data }; })
+    .catch((err) => { if (state.planning?.key === key) state.planning = { key, error: err.message }; })
+    .finally(() => { if (state.current === 'planning') renderPanel(); });
+  return state.planning;
+}
+
+/** Save what was typed, and take the plan the server works out from it. */
+async function savePlanningInputs(inputs, said = 'Saved. The plan is worked out again from it.') {
+  try {
+    const res = await api('/api/planning', { method: 'POST', body: JSON.stringify({ ay: state.ay, inputs }) });
+    state.planning = { key: state.planning?.key, data: await res.json() };
+    toast(said);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+  renderPanel();
+}
+
+/** What has been typed on the page so far, as the server last saw it. */
+function typedPlanningInputs(proj) {
+  const of = (entry) => (entry?.source === 'typed' ? entry.year : null);
+  const gains = {};
+  for (const [key, g] of Object.entries(proj.inputs.gains)) gains[key] = g.source === 'typed' ? g.amount : null;
+  return { salary_year: of(proj.inputs.salary_year), other_income_year: of(proj.inputs.other_income_year),
+           tds_year: of(proj.inputs.tds_year), gains };
+}
+
+/** One income's figures as the chart and table use them. */
+const planningPoint = (p) => taxPoints({ income: [p.income], tax: [p.tax], surcharge: [p.surcharge],
+                                              cess: [p.cess] })[0];
+
+const longDate = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN',
+  { day: 'numeric', month: 'long', year: 'numeric' });
+
+const planRegimeWord = (r) => (r === 'new' ? 'new regime' : 'old regime');
+
+/* ---- the cards ------------------------------------------------------------
+   Each card says one thing on the overview and opens to the detail behind
+   it. Every figure is the server's: the projection, run through the return's
+   own computation. */
+
+const PLAN_CARDS = [
+  { id: 'year', title: 'Your year', icon: 'calc',
+    sub: 'What has been read so far, and what is still expected, worked out together with the return’s own rules.',
+    summary: planYearSummary, detail: planYearDetail },
+  { id: 'take-home', title: 'Take-home and tax', icon: 'planning',
+    sub: 'How the tax grows with income, worked out with the same rules as your return.',
+    summary: planTakeHomeSummary, detail: planTakeHome },
+  { id: 'regime', title: 'Old or new regime', icon: 'reconcile',
+    sub: 'The projected year under each regime, and what it would take for the other to win.',
+    summary: planRegimeSummary, detail: planRegimeDetail },
+  { id: 'gains', title: 'Capital gains', icon: 'overview',
+    sub: 'Gains and losses so far and planned, what a loss booked now would save, and what is still tax-free.',
+    summary: planGainsSummary, detail: planGainsDetail },
+  { id: 'advance', title: 'Advance tax', icon: 'handoff',
+    sub: 'What the projected tax calls for by each instalment date, and what has been paid.',
+    summary: planAdvanceSummary, detail: planAdvanceDetail },
+];
+
+function planYearSummary(proj) {
+  const chosen = proj.regimes[proj.chosen].projected;
+  const i = proj.inputs;
+  const more = i.salary_year.more + i.other_income_year.more
+    + Object.values(i.gains).reduce((a, g) => a + g.amount, 0);
+  const nothing = !proj.read_so_far.length && !more && !proj.notes.used.length;
+  return {
+    figure: inr(chosen.total_income), caption: 'projected total income for the year',
+    visual: proj.year_state === 'current' ? el('div', { class: 'plan-months' },
+      miniMeter(proj.months_gone, 12), el('small', {}, `${proj.months_gone} of 12 months gone`)) : null,
+    line: nothing ? 'Nothing read or expected yet: add documents and notes, or type what you expect.'
+      : proj.year_state === 'past'
+      ? `The year is over: ${inr(chosen.net_tax_liability)} of tax on the figures read.`
+      : [`${inr(proj.heads.find((h) => h.key === 'gti').so_far)} read so far`,
+         more ? `, ${inr(more)} still expected` : '', `. Tax for the year about ${inr(chosen.net_tax_liability)}.`],
+  };
+}
+
+function planTakeHomeSummary(proj, data) {
+  const you = data.you[proj.chosen];
+  const share = you.income ? 1 - you.actual_tax / you.income : 1;
+  const curve = data.regimes[proj.chosen];
+  const next = [curve.rebate_ceiling, ...curve.surcharge_bands.map((s) => s.from)]
+    .sort((a, b) => a - b).find((v) => v > you.income);
+  const marginal = proj.regimes[proj.chosen].marginal_rate;
+  return {
+    figure: pct(share), caption: 'of projected income kept after tax',
+    visual: you.income ? el('div', { class: 'meter plan-meter', role: 'img',
+      'aria-label': `${pct(share)} kept, ${pct(1 - share)} in tax` },
+      el('span', { class: 'meter-seg', style: `flex:${you.actual_tax} 1 0` }),
+      el('span', { class: 'meter-seg rest', style: `flex:${Math.max(0, you.income - you.actual_tax)} 1 0` })) : null,
+    line: next && next - you.income <= 500_000
+      ? `${inr(next - you.income)} below the ${inr(next)} threshold.`
+      : marginal ? `Each further rupee of income costs ${pct(marginal, 1)} in tax.` : '',
+  };
+}
+
+function planRegimeSummary(proj) {
+  const r = proj.regime;
+  const line = r.lower === 'new'
+    ? (r.break_even_possible
+      ? `The old regime would need ${inr(r.break_even)} more in deductions to match.`
+      : r.difference ? 'No amount of deductions makes the old regime cheaper.' : '')
+    : 'The old regime is cheaper on the projected figures.';
+  return {
+    figure: `${r.lower === 'new' ? 'New' : 'Old'} regime`,
+    caption: r.difference ? `${inr(r.difference)} less tax than the other` : 'the same tax either way',
+    line: [line, proj.elected && proj.chosen !== r.lower ? ` Your return is set to the ${planRegimeWord(proj.chosen)}.` : ''],
+  };
+}
+
+function planGainsSummary(proj) {
+  const g = proj.gains;
+  const bits = [];
+  if (g.exemption_unused) bits.push(`${inr(g.exemption_unused)} of equity gains can still be booked tax-free`);
+  if (g.saving_per_lakh.short) bits.push(`a ${inr(100000)} short-term loss saves ${inr(g.saving_per_lakh.short)}`);
+  const any = g.projected.length || g.brought_forward.length || proj.lots.length;
+  return {
+    figure: inr(g.tax_on_gains), caption: 'tax on the year’s capital gains',
+    line: proj.year_state === 'past' ? (any ? 'The year is over: nothing more can be booked in it.'
+                                            : 'No capital gains were read for the year.')
+      : bits.length ? `${bits.join('; ')}.` : any ? 'Nothing to harvest on the projected figures.'
+      : 'No capital gains read or planned yet.',
+  };
+}
+
+function planAdvanceSummary(proj) {
+  const a = proj.advance_tax;
+  let figure, caption;
+  if (!a.needed) {
+    figure = 'Nothing due';
+    caption = a.exempt_207 ? 'a senior citizen without business income pays none'
+      : `tax not covered by TDS is under ${inr(a.floor)}`;
+  } else if (a.next) {
+    figure = inr(a.next.to_pay);
+    caption = a.next.to_pay ? `to pay by ${longDate(a.next.date)}` : `paid up to ${longDate(a.next.date)}`;
+  } else {
+    figure = inr(Math.max(0, a.due - a.paid_so_far));
+    caption = 'of the year’s advance tax unpaid';
+  }
+  return {
+    figure, caption,
+    visual: a.needed && a.due ? miniMeter(a.paid_so_far, a.due) : null,
+    line: `Projected tax ${inr(a.liability)}, ${inr(a.credits)} of it covered by TDS and TCS; `
+      + `${inr(a.paid_so_far)} paid in advance so far.`,
+  };
+}
+
+/* ---- the details ----------------------------------------------------------- */
+
+/** A labelled amount input for the plan: blank means "work it out", and the
+ *  placeholder says what that comes to. */
+function planInput(id, label, entry, value, note) {
+  const sources = { typed: 'Typed by you', notes: 'From your planning notes', scaled: 'Scaled from the documents',
+                    documents: 'As read from the documents', none: 'Nothing expected' };
+  const box = el('input', { id, inputmode: 'numeric', autocomplete: 'off', value: value ?? '',
+                            placeholder: rupees(entry.year ?? entry.amount ?? 0) });
+  return el('div', { class: 'ret-field' },
+    el('label', { for: id }, label), box,
+    el('small', {}, el('b', {}, sources[entry.source] || ''), entry.basis ? `: ${entry.basis}` : '',
+      note ? ` ${note}` : ''));
+}
+
+function planYearDetail(proj) {
+  const typed = typedPlanningInputs(proj);
+  const i = proj.inputs;
+  const months = proj.salary_months;
+  const intro = el('p', { class: 'viz-note' },
+    proj.year_state === 'current'
+      ? `${proj.months_gone} of the 12 months of FY ${proj.fy} are over. `
+      : proj.year_state === 'past' ? `FY ${proj.fy} is over. ` : `FY ${proj.fy} has not begun. `,
+    months ? `The salary documents cover ${plural(months, 'month')}. ` : '',
+    'Each expected figure below comes from your planning notes, from scaling the months the documents '
+    + 'cover, or from what you type, and it is added to the year as an expected entry, never to a schedule.');
+
+  const figures = table(
+    [{ t: '' }, { t: 'Read so far', num: true }, { t: 'Still expected', num: true }, { t: 'For the year', num: true }],
+    proj.heads.map((h) => el('tr', { class: ['gti', 'total', 'tax'].includes(h.key) ? 'tot' : '' },
+      el('td', {}, h.label),
+      el('td', { class: 'num' }, rupees(h.so_far)),
+      el('td', { class: 'num' }, h.expected === null ? '' : rupees(h.expected)),
+      el('td', { class: 'num' }, rupees(h.projected)))));
+
+  const form = el('form', { class: 'plan-form', onsubmit: (e) => {
+    e.preventDefault();
+    const read = (id) => $(`#${id}`).value.trim();
+    savePlanningInputs({
+      salary_year: read('pl-salary'), other_income_year: read('pl-other'), tds_year: read('pl-tds'),
+      gains: Object.fromEntries(Object.keys(i.gains).map((k) => [k, read(`pl-g-${k}`)])),
+    });
+  } },
+    el('div', { class: 'ret-grid' },
+      planInput('pl-salary', 'Salary for the whole year, before deductions', i.salary_year, typed.salary_year),
+      planInput('pl-other', 'Interest, dividends and other income for the whole year', i.other_income_year,
+                typed.other_income_year),
+      planInput('pl-tds', 'Tax deducted or collected at source for the whole year', i.tds_year, typed.tds_year),
+      ...Object.entries(i.gains).map(([k, g]) => planInput(`pl-g-${k}`, `Still to book: ${g.label}`, g,
+        typed.gains[k], g.source === 'none' ? 'Type a loss as a minus figure.' : ''))),
+    el('div', { class: 'plan-form-acts' },
+      el('span', {}, 'Leave a box empty to have it worked out.'),
+      Object.values(typed).some((v) => v !== null && typeof v !== 'object')
+        || Object.values(typed.gains).some((v) => v !== null)
+        ? el('button', { class: 'ghost', type: 'button', onclick: () => savePlanningInputs({ gains: {} },
+            'Cleared. Everything is worked out again.') }, 'Clear what I typed') : null,
+      el('button', { class: 'primary', type: 'submit' }, 'Save and work out again')));
+
+  const plan = tabOf('plan');
+  const run = plan ? runOf('plan') : null;
+  const used = proj.notes.used, unused = proj.notes.unused;
+  const notes = el('section', { class: 'card' }, el('h2', {}, 'Planning notes',
+    plan ? el('span', { class: 'src' }, plan.source_count
+      ? `${plural(plan.source_count, 'document')} routed here` : 'no documents routed here yet') : null),
+    el('div', { class: 'card-body' },
+      el('p', { class: 'viz-note' },
+        'A note about what is still to come is read here: a text file with your expected salary or bonus, '
+        + 'an increment letter, the sales you plan, investments meant for 80C. Put it with the documents and '
+        + 'press ', el('b', {}, 'Sort documents again'), ', or put it in a folder called ',
+        el('code', {}, '11_planning'), '. It is never read into the return itself.'),
+      used.length ? el('ul', { class: 'plan-notes' }, used.map((e) => el('li', {},
+        el('b', {}, e.description || e.kind), `: ${e.how}`,
+        e.cite ? el('small', { class: 'plan-cite' }, ` ${e.cite}`) : null))) : null,
+      unused.length ? el('ul', { class: 'plan-notes' }, unused.map((e) => el('li', {},
+        el('b', {}, e.description || e.kind), ` is not used: ${e.why}.`))) : null,
+      proj.notes.questions.length ? el('div', { class: 'callout warn' }, icon('warn'), el('div', {},
+        el('b', {}, 'The reading of your notes asks: '),
+        el('ul', { class: 'plan-notes' }, proj.notes.questions.map((q) => el('li', {}, q))))) : null,
+      plan ? el('div', { class: 'plan-form-acts' },
+        el('button', { class: 'ghost', type: 'button', disabled: !plan.source_count || run?.running,
+                       onclick: () => runTab(plan) },
+          icon('doc'), run?.running ? 'Reading…' : plan.document ? 'Read the notes again' : 'Read the notes')) : null));
+
+  return [
+    card('The year so far and as expected', el('div', { class: 'card-body' }, intro, figures), 'viz',
+         el('span', { class: 'src' }, `${planRegimeWord(proj.chosen)} · FY ${proj.fy}`)),
+    card('What is still expected', el('div', { class: 'card-body' }, form)),
+    notes,
+  ];
+}
+
+function planRegimeDetail(proj) {
+  const r = proj.regime;
+  const row = (label, key) => el('tr', {}, el('td', {}, label),
+    el('td', { class: 'num' }, rupees(proj.regimes.new.projected[key])),
+    el('td', { class: 'num' }, rupees(proj.regimes.old.projected[key])));
+  const compare = table([{ t: '' }, { t: 'New regime', num: true }, { t: 'Old regime', num: true }], [
+    row('Gross total income', 'gross_total_income'),
+    row('Total income, after deductions', 'total_income'),
+    row('Tax at slab rates', 'tax_at_slab'),
+    row('Tax at special rates', 'tax_at_special'),
+    row('Less the section 87A rebate', 'rebate_87a'),
+    row('Surcharge', 'surcharge'), row('Cess', 'cess'),
+    el('tr', { class: 'tot' }, el('td', {}, 'Tax for the year'),
+      el('td', { class: 'num' }, rupees(r.new)), el('td', { class: 'num' }, rupees(r.old)))]);
+  const bars = barList([
+    { label: 'New regime', value: r.new, tone: r.lower === 'new' ? '' : 'quiet' },
+    { label: 'Old regime', value: r.old, tone: r.lower === 'old' ? '' : 'quiet' }]);
+  const verdict = el('p', { class: 'viz-note' },
+    r.difference ? [el('b', {}, `The ${planRegimeWord(r.lower)} costs ${inr(r.difference)} less`), ' on the projected figures. ']
+      : 'Both regimes come to the same tax on the projected figures. ',
+    r.lower === 'new' && r.break_even_possible
+      ? ['For the old regime to cost no more, its deductions would have to come to ', el('b', {}, inr(r.break_even)),
+         ' more than you claim now: 80C (up to ', inr(150000), '), 80D, house rent, interest on a home loan '
+         + 'and the like, together.']
+      : r.lower === 'new' && r.difference ? 'No amount of further deductions would make the old regime cheaper.' : '');
+  const claimed = r.claimed_old.length ? el('details', { class: 'viz-table' },
+    el('summary', {}, 'Deductions already claimed, under the old regime'),
+    table([{ t: 'Section' }, { t: 'Claimed', num: true }, { t: 'Allowed', num: true }],
+      r.claimed_old.map((l) => el('tr', {}, el('td', {}, l.section),
+        el('td', { class: 'num' }, rupees(l.claimed)), el('td', { class: 'num' }, rupees(l.allowed)))))) : null;
+  return [
+    card('The projected year under each regime', el('div', { class: 'card-body' }, bars, verdict, compare, claimed),
+      'viz', el('span', { class: 'src' }, `FY ${proj.fy}`)),
+    card('Choosing', el('div', { class: 'card-body' }, el('ul', { class: 'plan-notes' },
+      el('li', {}, 'The new regime is the default. Without business income the choice is made each year in the return.'),
+      el('li', {}, 'With business or professional income, leaving the new regime needs Form 10-IEA before the '
+        + 'return’s due date, and coming back to it is allowed only once.'),
+      el('li', {}, 'In the new regime the employer’s NPS contribution is still deductible, up to 14% of basic '
+        + 'pay and dearness allowance (section 80CCD(2)).')))),
+  ];
+}
+
+const GAIN_LABELS = {
+  '111A_short': 'Listed shares and equity funds, short-term',
+  '112A_long': 'Listed shares and equity funds, long-term',
+  slab_short: 'Other assets, short-term, at slab rates',
+  '112_long': 'Other assets, long-term',
+};
+
+function planGainsDetail(proj) {
+  const g = proj.gains;
+  const keys = [...new Set([...g.so_far, ...g.projected].map((b) => b.key))];
+  const of = (list, key) => list.find((b) => b.key === key);
+  const buckets = keys.length ? table(
+    [{ t: '' }, { t: 'Rate', num: true }, { t: 'Read so far', num: true }, { t: 'For the year', num: true }],
+    keys.map((key) => {
+      const b = of(g.projected, key) || of(g.so_far, key);
+      return el('tr', {},
+        el('td', {}, GAIN_LABELS[key] || `${b.section} ${b.term}-term`,
+          key === '112A_long' && b.exemption ? el('small', {}, ` ${inr(b.exemption)} of it exempt`) : null),
+        el('td', { class: 'num' }, b.rate ? pct(b.rate, 1) : 'slab'),
+        el('td', { class: 'num' }, rupees(of(g.so_far, key)?.gain || 0)),
+        el('td', { class: 'num' }, rupees(of(g.projected, key)?.gain || 0)));
+    })) : el('p', { class: 'viz-note' }, 'No capital gains read or planned yet.');
+
+  const past = proj.year_state === 'past';
+  const facts = el('ul', { class: 'plan-notes' },
+    el('li', {}, el('b', {}, `${inr(g.tax_on_gains)} of tax`), ' falls on the year’s capital gains, after '
+      + 'set-off and the exemption, at the rates and surcharge your income brings.'),
+    past ? el('li', {}, `FY ${proj.fy} is over, so nothing more can be booked in it. What is below still `
+      + 'shows how the year turned out, and the losses carried into the next.') : null,
+    past ? null : el('li', {}, g.exemption_unused
+      ? [el('b', {}, `${inr(g.exemption_unused)} of the ${inr(g.exemption_112a)} exemption is unused.`),
+         ' Long-term gains on listed shares and equity funds up to that much can still be booked this year '
+         + 'without tax: sell holdings kept for more than 12 months, and buy them back to raise their cost.']
+      : `The ${inr(g.exemption_112a)} exemption on long-term equity gains is used up.`),
+    past ? null : el('li', {}, g.saving_per_lakh.short || g.saving_per_lakh.long
+      ? ['Each ', inr(100000), ' of loss booked before 31 March saves about ',
+         el('b', {}, inr(g.saving_per_lakh.short)), ' if short-term',
+         g.saving_per_lakh.long ? [' and ', el('b', {}, inr(g.saving_per_lakh.long)), ' if long-term. ']
+           : '; a long-term loss would save nothing now, because the long-term gains are already untaxed. ',
+         'A short-term loss can be set against any capital gain; a long-term loss only against long-term '
+         + 'gains. A loss not used this year is carried forward for eight years.']
+      : 'A loss booked now would save nothing this year: there are no taxed gains for it to reduce. '
+        + 'It would be carried forward for eight years instead.'));
+
+  const typed = typedPlanningInputs(proj);
+  const whatIf = el('form', { class: 'plan-form', onsubmit: (e) => {
+    e.preventDefault();
+    savePlanningInputs({ ...typed,
+      gains: Object.fromEntries(Object.keys(proj.inputs.gains).map((k) => [k, $(`#pg-${k}`).value.trim()])) });
+  } },
+    el('div', { class: 'ret-grid' }, Object.entries(proj.inputs.gains).map(([k, entry]) =>
+      planInput(`pg-${k}`, entry.label, entry, typed.gains[k]))),
+    el('div', { class: 'plan-form-acts' },
+      el('span', {}, 'A gain or loss you expect to book before 31 March. Type a loss as a minus figure.'),
+      el('button', { class: 'primary', type: 'submit' }, 'Work out again')));
+
+  const bf = g.brought_forward.length ? card('Losses brought forward', el('div', { class: 'card-body' },
+    table([{ t: 'Loss' }, { t: 'From AY' }, { t: 'Amount', num: true }, { t: 'Usable until AY' }],
+      g.brought_forward.map((b) => el('tr', {},
+        el('td', {}, LOSS_KINDS[b.kind] || (b.kind || '').replace(/_/g, ' ')),
+        el('td', {}, b.ay_of_origin), el('td', { class: 'num' }, rupees(b.amount)),
+        el('td', {}, b.last_ay || '—', b.last_year_now ? chip('last year', 'warn') : null)))))) : null;
+
+  const lots = proj.lots.length ? card('Foreign shares still held', el('div', { class: 'card-body' },
+    el('p', { class: 'viz-note' }, 'From Schedule FA. Shares listed abroad are long-term only once held for '
+      + 'more than 24 months: sold after the date below, the gain is taxed at 12.5% rather than at your slab rate.'),
+    table([{ t: 'Company' }, { t: 'Acquired' }, { t: 'Shares', num: true }, { t: 'Long-term after' }, { t: '' }],
+      proj.lots.map((lot) => el('tr', {},
+        el('td', {}, lot.entity), el('td', {}, longDate(lot.acquired_on)),
+        el('td', { class: 'num' }, String(lot.quantity)),
+        el('td', {}, longDate(lot.long_term_after)),
+        el('td', {}, lot.status === 'long' ? chip('long-term now', 'ok')
+          : lot.status === 'soon' ? chip(`in ${plural(lot.days, 'day')}`, 'warn') : '')))))) : null;
+
+  return [
+    card('Gains and losses this year', el('div', { class: 'card-body' }, buckets, facts), 'viz',
+         el('span', { class: 'src' }, `${planRegimeWord(proj.chosen)} · FY ${proj.fy}`)),
+    past ? null : card('What if you book more', el('div', { class: 'card-body' }, whatIf)),
+    bf, lots,
+  ];
+}
+
+function planAdvanceDetail(proj) {
+  const a = proj.advance_tax;
+  const rows = table(
+    [{ t: 'Due by' }, { t: 'Of the year’s', num: true }, { t: 'Needed by then', num: true },
+     { t: 'Paid by then', num: true }, { t: 'Short', num: true }, { t: 'Interest, about', num: true }],
+    a.instalments.map((r) => el('tr', { class: a.next && r.date === a.next.date ? 'plan-you' : '' },
+      el('td', {}, longDate(r.date)),
+      el('td', { class: 'num' }, pct(r.share, 0)),
+      el('td', { class: 'num' }, rupees(r.required)),
+      el('td', { class: 'num' }, r.past ? rupees(r.paid) : ''),
+      el('td', { class: 'num' }, r.past ? rupees(r.shortfall) : ''),
+      el('td', { class: 'num' }, r.past ? rupees(r.interest_234c) : ''))));
+  return [
+    card('Instalments', el('div', { class: 'card-body' },
+      el('p', { class: 'viz-note' },
+        `Projected tax ${inr(a.liability)}, less ${inr(a.credits)} expected to be deducted or collected at source, `
+        + `leaves ${inr(a.due)} to pay as advance tax. `,
+        a.needed ? '' : a.exempt_207
+          ? 'A resident senior citizen without business or professional income pays no advance tax (section 207).'
+          : `Below ${inr(a.floor)} for the year, none is due (section 208).`),
+      rows), 'viz', el('span', { class: 'src' }, `FY ${proj.fy}`)),
+    card('How it works', el('div', { class: 'card-body' }, el('ul', { class: 'plan-notes' },
+      el('li', {}, 'By each date, the share shown of the year’s tax should have been paid (section 211).'),
+      el('li', {}, 'Paying less than 12% by 15 June, 36% by 15 September, 75% by 15 December or all of it by '
+        + '15 March costs interest of 1% a month on the shortfall: three months for each of the first three '
+        + 'dates, one for the last (section 234C). The figures shown are estimates on the projected tax.'),
+      el('li', {}, 'Tax on a capital gain that arises after a date can be paid with the following instalments '
+        + 'without that interest.'),
+      el('li', {}, 'Paying less than 90% of the tax by 31 March adds interest of 1% a month from April on '
+        + 'what is unpaid (section 234B).')))),
+  ];
+}
+
+/* ---- the page -------------------------------------------------------------- */
+
+function pagePlanning() {
+  const slot = planningData();
+  const cardOf = PLAN_CARDS.find((c) => c.id === state.sub) || null;
+  const head = el('div', { class: 'page-head' },
+    el('div', {},
+      cardOf ? el('a', { class: 'plan-back', href: '#planning' }, icon('chev', 'ico back'), 'Planning') : null,
+      el('div', { class: 'page-title' }, el('h1', {}, cardOf ? cardOf.title : 'Planning')),
+      el('p', { class: 'page-sub' }, cardOf ? cardOf.sub
+        : 'Plan the rest of the year from what you know so far: the documents read, the notes you add, and '
+          + 'what you type. Nothing here changes your return.')));
+  if (slot.loading) {
+    return [head, el('section', { class: 'card' }, el('div', { class: 'card-body' },
+      el('p', { class: 'viz-note' }, 'Working out the plan…')))];
+  }
+  if (slot.error) {
+    const older = slot.error === 'not found';
+    return [head, card(older ? 'Flow needs restarting for this page' : 'The plan could not be worked out',
+      el('div', { class: 'card-body' }, el('p', {}, older
+        ? 'The Flow that is running was started before this page was added, so it cannot work out the '
+          + 'plan. Close its window (or press Ctrl+C in it), run flow.cmd again, then reload this page.'
+        : slot.error)), older ? 'warn' : 'err')];
+  }
+  const data = slot.data, proj = data.projection;
+  if (cardOf) return [head, ...cardOf.detail(proj, data).filter(Boolean)];
+
+  const banners = [];
+  if (proj.rates.assumed) {
+    banners.push(el('div', { class: 'callout warn' }, icon('warn'), el('div', {},
+      el('b', {}, `FY ${proj.fy} rates are not built into Flow yet. `),
+      `This plan uses the FY ${proj.rates.fy} slabs, rates and thresholds; if the year’s Finance Act `
+      + 'changed them, the figures will be off by that much.')));
+  }
+  if (proj.year_state === 'past') {
+    banners.push(el('div', { class: 'callout info' }, icon('info'), el('div', {},
+      el('b', {}, `FY ${proj.fy} ended on ${longDate(proj.year_ends)}. `),
+      'The cards show how it turned out. To plan the year now running, ',
+      el('a', { href: '#_profiles/new' }, 'add a return for it'), '.')));
+  }
+  const tiles = el('div', { class: 'plan-grid' }, PLAN_CARDS.map((c) => {
+    const s = c.summary(proj, data);
+    return el('a', { class: 'plan-card', href: `#planning/${c.id}` },
+      el('div', { class: 'plan-card-h' }, icon(c.icon), el('span', {}, c.title), icon('chev', 'ico plan-go')),
+      el('div', { class: 'plan-fig' }, s.figure),
+      el('div', { class: 'plan-cap' }, s.caption),
+      s.visual || null,
+      el('p', { class: 'plan-line' }, s.line));
+  }));
+
+  const hints = proj.hints.filter((h) => h.id !== 'rates');
+  const worth = hints.length ? el('section', { class: 'card' },
+    el('h2', {}, 'Worth knowing', el('span', { class: 'src' }, 'chosen for what is in this return')),
+    el('ul', { class: 'plan-hints' }, hints.map((h) => {
+      const to = PLAN_CARDS.find((c) => c.id === h.card);
+      return el('li', { class: h.kind },
+        el('span', { class: `chip ${h.kind === 'act' ? 'warn' : 'line'}` }, h.kind === 'act' ? 'Act' : 'Know'),
+        el('div', {}, el('b', {}, h.title), el('p', {}, h.text),
+          to ? el('a', { class: 'linkish', href: `#planning/${to.id}` }, `Open ${to.title}`) : null));
+    }))) : null;
+  return [head, ...banners, tiles, worth];
+}
+
+/* ---- take-home and tax: the curve ----------------------------------------- */
+
+function planTakeHome(proj, data) {
+  const ui = (state.ui.planning ||= {});
+  const elected = state.activeProfile?.settings?.regime;
+  const regime = ui.regime
+    || (['new', 'old'].includes(elected) ? elected : data.recommended_regime) || 'new';
+  const curve = data.regimes[regime];
+  const you = data.you?.[regime] || null;
+  const mine = you ? planningPoint(you) : null;
+  const onChart = !!you && you.income <= data.top;
+  const pts = taxPoints(curve);
+  const point = (income) => pts.find((p) => p.income === income);
+  const last = pts[pts.length - 1];
+  const regimeName = regime === 'new' ? 'New regime' : 'Old regime';
+  const view = ui.view === 'amount' ? 'amount' : 'share';
+  const ageLabel = (state.profileFields?.age_band?.options || [])
+    .find((o) => o.value === data.age_band)?.label || data.age_band;
+
+  // One row above what it scopes: which regime the curve is for.
+  const filters = el('div', { class: 'plan-filters' },
+    el('div', { class: 'seg', role: 'group', 'aria-label': 'Regime' },
+      ['new', 'old'].map((r) => el('button', { type: 'button', 'aria-pressed': String(r === regime),
+        onclick: () => { ui.regime = r; renderPanel(); } }, r === 'new' ? 'New regime' : 'Old regime'))),
+    el('div', { class: 'seg', role: 'group', 'aria-label': 'Show the curve' },
+      [['share', 'Shares'], ['amount', 'Rupees']].map(([v, label]) => el('button', { type: 'button',
+        'aria-pressed': String(v === view), onclick: () => { ui.view = v; renderPanel(); } }, label))),
+    el('span', { class: 'plan-scope' }, regime === 'old'
+      ? `Old-regime slabs for ${String(ageLabel).toLowerCase()}, as set on the return.`
+      : 'The new regime has the same slabs at every age.'));
+
+  // One key for both charts: the same part of the tax wears the same colour in each.
+  const key = el('div', { class: 'status-key plan-key' },
+    el('span', {}, el('i', { class: 'sw k-tax' }), 'Income tax'),
+    el('span', {}, el('i', { class: 'sw k-sur' }), 'Surcharge'),
+    el('span', {}, el('i', { class: 'sw k-cess' }), 'Cess, 4% of both'),
+    el('span', {}, el('i', { class: 'sw k-kept' }), 'Take-home'),
+    onChart ? el('span', {}, el('i', { class: 'sw mark' }), 'Your projected income') : null);
+
+  // What the curve shows, read off it rather than written in: every figure
+  // in these lines comes from the curve the server worked out.
+  const notes = [];
+  const rebateAt = point(curve.rebate_ceiling + 1);
+  const rebateZone = curve.relief_zones.find((z) => z.kind === 'rebate');
+  if (rebateZone) {
+    notes.push([el('b', {}, `No tax up to ${inr(curve.rebate_ceiling)}`), ': the section 87A rebate covers it. ',
+      `Just past it you take home less than at ${inr(curve.rebate_ceiling)} until `,
+      el('b', {}, inr(rebateZone.keeps_less_until)),
+      `: marginal relief takes every rupee above ${inr(curve.rebate_ceiling)} as tax, and cess adds 4% on top.`]);
+  } else if (rebateAt) {
+    notes.push([el('b', {}, `No tax up to ${inr(curve.rebate_ceiling)}`), ': the section 87A rebate covers it. ',
+      'One rupee more and ', el('b', {}, inr(rebateAt.total)),
+      ' is due: the old regime has no marginal relief on the rebate.']);
+  }
+  for (const z of curve.relief_zones.filter((z) => z.kind === 'surcharge')) {
+    const from = point(z.from), to = point(z.to);
+    const loss = from && to ? from.kept - to.kept : 0;
+    notes.push([el('b', {}, `Crossing ${inr(z.from)} adds a ${pct(z.rate, 0)} surcharge`), '. ',
+      'Marginal relief keeps the step smooth, but only by taking every rupee above it as tax until ',
+      inr(z.to), ', with cess on top. So from ', inr(z.from), ' to ', el('b', {}, inr(z.keeps_less_until)),
+      ' you take home less than at ', inr(z.from), ' itself',
+      ...(loss > 0 ? [', as much as ', el('b', {}, inr(loss)), ' less'] : []), '.']);
+  }
+  const before = pts[pts.length - 2];
+  const marginal = (last.total - before.total) / (last.income - before.income);
+  notes.push([el('b', {}, `At ${inr(last.income)}, ${pct(last.total / last.income)} of the income goes in tax`),
+    `, while each further rupee costs ${pct(marginal, 2)}. The average stays below the rate on the last `
+    + 'rupee because the lower slabs are taxed less.']);
+  if (you) {
+    const next = [curve.rebate_ceiling, ...curve.surcharge_bands.map((s) => s.from)]
+      .sort((a, b) => a - b).find((v) => v > you.income);
+    notes.push([el('b', {}, `Your projected total income is ${inr(you.income)}`),
+      `: on this curve, ${inr(mine.total)} of tax, ${pct(mine.total / you.income)} of it.`,
+      next ? ` The next threshold, ${inr(next)}, is ${inr(next - you.income)} away.` : '',
+      you.special_total ? ` The projection's own tax is ${inr(you.actual_tax)}: ${inr(you.special_total)} of the `
+        + 'income is taxed at special rates, which this curve, taxing every rupee at slab rates, does not show.' : '',
+      onChart ? '' : ` That is beyond the ${inr(data.top)} the chart shows.`]);
+  }
+
+  // The same figures as a table: every ₹5 lakh, and the return's own income.
+  const rows = pts.filter((p) => p.income && p.income % 500_000 === 0);
+  if (onChart && !rows.some((p) => p.income === you.income)) {
+    rows.push({ ...mine, mine: true });
+    rows.sort((a, b) => a.income - b.income);
+  }
+  const figures = table(
+    [{ t: 'Taxable income' }, { t: 'Income tax', num: true }, { t: 'Surcharge', num: true },
+     { t: 'Cess', num: true }, { t: 'Tax in all', num: true }, { t: 'Share in tax', num: true },
+     { t: 'Take-home', num: true }],
+    rows.map((p) => el('tr', { class: p.mine ? 'plan-you' : '' },
+      el('td', {}, inr(p.income), p.mine ? el('small', {}, ' your income') : null),
+      el('td', { class: 'num' }, rupees(p.tax)),
+      el('td', { class: 'num' }, rupees(p.sur)),
+      el('td', { class: 'num' }, rupees(p.cess)),
+      el('td', { class: 'num' }, rupees(p.total)),
+      el('td', { class: 'num' }, pct(p.total / p.income)),
+      el('td', { class: 'num' }, rupees(p.kept)))));
+
+  const chart = card('Take-home and tax as income rises',
+    el('div', { class: 'card-body' },
+      key,
+      taxShareChart(curve, onChart ? you : null, view),
+      el('p', { class: 'viz-note' },
+        view === 'amount'
+          ? 'In rupees the stack at any point adds up to the income itself, so its top edge is a straight line. '
+            + 'Small steps, like the rebate or the stretches past each threshold, are easier to see as shares. '
+          : '',
+        `Every rupee on the curve is ordinary income taxed at slab rates, for a resident individual at FY ${data.rates_fy || data.fy} `
+        + 'rates. Taxable income is income after deductions; capital gains taxed at special rates are not on it. '
+        + 'Point at the chart, or use the arrow keys on it, for the figures at any income.'),
+      el('h3', { class: 'plan-h' }, 'What the tax is made of'),
+      el('p', { class: 'viz-note plan-sub' }, view === 'amount'
+        ? 'The tax alone, in rupees, split into its three parts.'
+        : 'The tax alone, each part as a share of it, so the surcharge and cess are big enough to see. '
+          + 'Nothing is stacked where there is no tax.'),
+      taxMixChart(curve, onChart ? you : null, view),
+      el('h3', { class: 'plan-h' }, 'What the curve shows'),
+      el('ul', { class: 'plan-notes' }, notes.map((n) => el('li', {}, n))),
+      el('details', { class: 'viz-table' }, el('summary', {}, 'As a table'), figures)),
+    'viz', el('span', { class: 'src' }, `${regimeName} · FY ${data.fy}`));
+
+  return [filters, chart];
 }

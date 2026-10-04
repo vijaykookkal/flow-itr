@@ -3,7 +3,56 @@
 Changes worth knowing about, newest first. Flow is a draft-preparing tool:
 check every figure against the e-filing utility before you file.
 
-## Unreleased
+## 0.3.0 (4 October 2026)
+
+**Planning.** A new page after Hand-off, for the year that is still running.
+Add a return in the middle of the year with what you have (payslips so far, the
+sales already made) and a note of what is coming: "₹3.5 lakh a month, a ₹5 lakh
+bonus in June, selling the 2024 RSUs in January". The page projects the year
+from all of it, with the same rules as the return, and you can type over any
+expected figure. Its cards, each opening to the detail:
+
+- **Your year**: what has been read, what is still expected and where each
+  expected figure came from, and the year's tax.
+- **Take-home and tax**: how the tax grows with income up to ₹1.5 crore, as
+  shares of income or in rupees, with income tax, surcharge and cess shown
+  apart; where the rebate and each surcharge threshold fall; and the stretches
+  just past them where earning more leaves you with less.
+- **Old or new regime**: the projected tax under each, and how much more in
+  deductions the old regime would need to match the new.
+- **Capital gains**: the tax on the year's gains, what a loss booked before
+  31 March would save, how much of the ₹1.25 lakh equity exemption is still
+  unused, losses brought forward and the year each expires, and foreign shares
+  such as RSUs with the date each lot turns long-term.
+- **Advance tax**: what is due by each instalment date, against what was paid
+  by then.
+
+Below them are hints chosen for what is in your return. Those that call for
+acting before 31 March are shown only while the year is running.
+
+**Planning notes.** A note about the year ahead is read as an expectation, never
+into the return. Put it with the documents and press **Sort documents again**,
+or put it in a folder called `11_planning`, then read it from the Planning page.
+
+**A plan for a year without its rates.** For a year whose Finance Act is not
+built into Flow yet, the plan uses the latest year's rates and says so at the
+top of the page. A return is never computed this way.
+
+**Returns, redesigned.** The return's name, its year and its folder sit together
+at the top. The folder is shown, not chosen, because it is named after the
+return. Then come the person (PAN, date of birth, age and sex), how the tax is
+worked out, reading and export, and the documents folder.
+
+**Results follow the return's name.** There is no results folder to choose any
+more: everything Flow produces is kept in the return's own folder. Renaming a
+return moves that folder, with the documents when they are in it, after a
+warning; if any part of the move fails, all of it is undone. Results that an
+earlier version kept elsewhere can be moved in from the Returns page.
+
+**Restart reminder.** When Flow's own program has changed since it was started,
+after an update for instance, the page says so and asks for a restart, instead
+of failing in ways that look like bugs.
+
 
 **Zip archives are read.** A `.zip` in the documents folder is now opened when
 documents are sorted, and routed by what is inside it: an archive of expense
@@ -22,8 +71,10 @@ unchanged.
 computation had replaced is gone, so nothing can show its figures by mistake.
 
 **Tests.** Worked cases for the slabs, the 87A rebate and its marginal relief,
-surcharge, the 15% cap on capital gains, loss set-off, the server's guard and
-archive routing: `python -m unittest discover -s tests -t .`
+surcharge, the 15% cap on capital gains, loss set-off, the server's guard,
+archive routing, the planning projection and its take-home curve, results that
+follow the return's name, and a check that the page's scripts never declare the
+same name twice: `python -m unittest discover -s tests -t .`
 
 **The local server answers only to itself.** Every request must be addressed
 to 127.0.0.1 or localhost, which stops a web page elsewhere from reaching it by

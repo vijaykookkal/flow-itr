@@ -147,6 +147,17 @@
   </form>
 </dialog>
 
+<dialog id="move-dialog">
+  <form method="dialog">
+    <h3 id="move-title">Move the folder?</h3>
+    <div id="move-message"></div>
+    <menu>
+      <button value="cancel" type="submit" class="ghost" formnovalidate>Cancel</button>
+      <button value="move" type="submit" class="primary" id="move-confirm">Move</button>
+    </menu>
+  </form>
+</dialog>
+
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
 <script src="app.js"></script>

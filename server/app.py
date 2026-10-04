@@ -183,6 +183,34 @@ def page_version() -> str:
     return h.hexdigest()[:12]
 
 
+def code_version(root=None) -> str:
+    """A fingerprint of the server's own code as it is on disk now.
+
+    Reloading the page picks up the page's changes, but this process keeps
+    running the code it started with until Flow is restarted: a new endpoint
+    answers "not found" and a new field is simply missing, which looks like a
+    bug. Names, sizes and modification times notice a change, and are cheap
+    enough to look at on every poll."""
+    root = root or paths.ROOT
+    h = hashlib.sha256()
+    for folder in ("server", "engine"):
+        for path in sorted((root / folder).rglob("*.py")):
+            try:
+                st = path.stat()
+            except OSError:
+                continue
+            h.update(f"{path.relative_to(root).as_posix()}:{st.st_size}:{st.st_mtime_ns}\n".encode())
+    return h.hexdigest()[:12]
+
+
+# The code this process is running, to compare with what is on disk later.
+STARTED_WITH = code_version()
+
+
+def server_stale() -> bool:
+    return code_version() != STARTED_WITH
+
+
 # Windows reads a file's type from the registry, where .js is sometimes
 # text/plain and .woff2 is usually missing. A script served as text is refused
 # by the browser, so the types the page depends on are stated here.
@@ -227,6 +255,44 @@ def _rates_needed(summary: dict) -> list[dict]:
                 take((head.get("form") or {}).get("rates_needed"))
     return list(seen.values())
 SUMMARY_LOCK = threading.Lock()
+
+
+def planning_payload(ay: str) -> dict:
+    """The Planning page: the take-home curve, and the year projected from the
+    schedules read so far, the planning notes and what was typed on the page."""
+    from engine import planning, projection
+
+    settings = profiles.settings_for()
+    docs, _missing = _collect(ay)
+    plan_doc = paths.read_json(paths.resolved(ay, "plan")) or paths.read_json(paths.extracted(ay, "plan"))
+    inputs = paths.read_json(paths.data_root(ay) / "planning.json") or {}
+    proj = projection.build(ay, docs, plan_doc, inputs, settings)
+    curve = planning.curve(ay, settings.get("age_band") or "below_60")
+    return {**curve, "you": proj["you"], "recommended_regime": proj["lower"], "projection": proj}
+
+
+def planning_inputs(raw: dict) -> dict:
+    """What may be typed on the Planning page: whole rupees, or nothing (meaning
+    "work it out"). Anything else is refused rather than guessed at."""
+    from engine.projection import BUCKETS
+
+    def amount(value, what, signed=False):
+        if value in (None, ""):
+            return None
+        try:
+            number = int(round(float(str(value).replace(",", ""))))
+        except ValueError:
+            raise ValueError(f"{what} must be an amount in rupees, not {value!r}") from None
+        if number < 0 and not signed:
+            raise ValueError(f"{what} cannot be negative")
+        return number
+
+    out = {key: amount(raw.get(key), label) for key, label in (
+        ("salary_year", "Salary for the year"), ("other_income_year", "Other income for the year"),
+        ("tds_year", "Tax deducted for the year"))}
+    out["gains"] = {key: amount((raw.get("gains") or {}).get(key), b["label"], signed=True)
+                    for key, b in BUCKETS.items()}
+    return out
 
 
 def compute_summary(ay: str) -> dict:
@@ -465,6 +531,17 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError as exc:
                     return self._json({"error": str(exc)}, 400)
                 return self._json({"decisions": notes.load_decisions(ay)})
+            if url.path == "/api/planning":
+                # What the Planning page was told to expect for the rest of the
+                # year. Kept beside the return's results, never in a schedule.
+                body = self._body()
+                ay = body.get("ay") or self._ay()
+                try:
+                    inputs = planning_inputs(body.get("inputs") or {})
+                except ValueError as exc:
+                    return self._json({"error": str(exc)}, 400)
+                paths.write_json(paths.data_root(ay) / "planning.json", inputs)
+                return self._json(planning_payload(ay))
             if url.path == "/api/handoff":
                 body = self._body()
                 ay = body.get("ay") or self._ay()
@@ -487,24 +564,26 @@ class Handler(BaseHTTPRequestHandler):
         # A run writes to "the active profile's data folder", looked up when it
         # finishes. Changing which profile that is, or where its folders are,
         # mid-run would put one person's results in another's return.
-        redirects = (action in ("activate", "move", "delete")
+        redirects = (action in ("activate", "move", "delete", "convention")
                      or (action == "update" and any(
-                         k in (body.get("patch") or {}) for k in ("source_dir", "data_dir", "fy"))))
+                         k in (body.get("patch") or {}) for k in ("source_dir", "fy", "name"))))
         busy = ACTIVITY.busy() if redirects else None
         if busy:
             return self._json({"error": f"not while work is running ({busy})"}, 409)
         try:
             if action == "create":
                 # The folders typed on the form are passed through: a profile
-                # can be made straight onto a synced or external folder.
+                # can use a synced or external documents folder. Results use
+                # the return-name convention.
                 profiles.create(body.get("name", ""), ay=body.get("ay", ""), fy=body.get("fy", ""),
                                 pan=body.get("pan", ""), settings=body.get("settings"),
-                                source_dir=body.get("source_dir", ""),
-                                data_dir=body.get("data_dir", ""))
+                                source_dir=body.get("source_dir", ""))
             elif action == "update":
                 profiles.update(body["id"], body.get("patch", {}))
             elif action == "move":
                 profiles.move_dir(body["id"], body["field"], body["target"])
+            elif action == "convention":
+                profiles.use_conventional_results(body["id"])
             elif action == "activate":
                 profiles.set_active(body["id"])
             elif action == "delete":
@@ -520,7 +599,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": f"that folder could not be used: {exc.strerror or exc}"}, 400)
 
         ay = self._ay()
-        if action in ("create", "update", "activate", "move"):
+        if action in ("create", "update", "activate", "move", "convention"):
             compute_summary(ay)
         return self._json({"store": profiles.load_all(), "active": profiles.active()})
 
@@ -530,7 +609,7 @@ class Handler(BaseHTTPRequestHandler):
         ay = (q.get("ay") or [self._ay()])[0]
 
         if url.path == "/api/version":
-            return self._json({"page_version": page_version()})
+            return self._json({"page_version": page_version(), "server_stale": server_stale()})
 
         if url.path == "/api/state":
             config = paths.load_tabs()
@@ -599,6 +678,7 @@ class Handler(BaseHTTPRequestHandler):
                 "engine_choices": engine_registry.choices(),
                 "activity": ACTIVITY.snapshot(),
                 "page_version": page_version(),
+                "server_stale": server_stale(),
                 "version": (paths.ROOT / "VERSION").read_text("utf-8").strip()
                            if (paths.ROOT / "VERSION").exists() else "",
                 "default_engine": user_settings.default_engine(),
@@ -617,6 +697,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(jsl.compose(tab_id))
             except FileNotFoundError:
                 return self._json({"error": f"no schema for {tab_id}"}, 404)
+
+        if url.path == "/api/planning":
+            from engine.compute import RatesUnavailable
+            try:
+                return self._json(planning_payload(ay))
+            except RatesUnavailable as exc:
+                return self._json({"error": str(exc)}, 404)
 
         if url.path == "/api/settings":
             return self._json(user_settings.describe())

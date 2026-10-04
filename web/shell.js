@@ -18,6 +18,7 @@ const ICONS = {
   review: '<path d="M4.5 6.6l1.6 1.6L9 5.3M4.5 12.6l1.6 1.6L9 11.3M4.5 18.2h4M12.5 6.8h7M12.5 12.8h7M12.5 18.2h7"/>',
   reconcile: '<path d="M7 4v13M4 14l3 3 3-3M17 20V7M14 10l3-3 3 3"/>',
   handoff: '<path d="M9 4.5h6v3H9zM9 6H6.5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H15M9 13.5l2 2 4-4.5"/>',
+  planning: '<path d="M4 19.5h16M5.5 15.5l4-4.5 3.5 3 5.5-6.5M15 7.5h3.5V11"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   chev: '<path d="M9 6l6 6-6 6"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -56,6 +57,7 @@ const AREAS = [
   { id: 'review', label: 'Review', icon: 'review' },
   { id: 'reconcile', label: 'Reconcile', icon: 'reconcile' },
   { id: 'handoff', label: 'Hand-off', icon: 'handoff' },
+  { id: 'planning', label: 'Planning', icon: 'planning' },
 ];
 
 // The schedules, grouped the way a return is thought about and not in the
@@ -81,7 +83,7 @@ const NAMES = {
 };
 
 const ROUTES = { home: 'Home', engines: 'Reading engines', about: 'Help and about', overview: 'Summary', documents: 'Documents', schedules: 'Schedules', review: 'Review',
-                 reconcile: 'Reconcile', handoff: 'Hand-off', help: 'Getting started',
+                 reconcile: 'Reconcile', handoff: 'Hand-off', planning: 'Planning', help: 'Getting started',
                  _profiles: 'Returns' };
 
 const tabOf = (id) => state.tabs.find((t) => t.id === id) || null;
@@ -245,7 +247,8 @@ function renderRail() {
     if (rows.some(Boolean)) nodes.push(el('div', { class: 'nav-head' }, group.label), ...rows);
   }
   // A schedule added to config/tabs.json later still gets a place.
-  const loose = state.tabs.filter((t) => !placed.has(t.id));
+  // Planning notes are not a schedule of the return; the Planning page reads them.
+  const loose = state.tabs.filter((t) => !placed.has(t.id) && t.kind !== 'plan');
   if (loose.length) nodes.push(el('div', { class: 'nav-head' }, 'Other'), ...loose.map((t) => link(t.id, false)));
 
   nodes.push(el('div', { class: 'nav-spacer' }),
@@ -485,6 +488,7 @@ function renderPanel() {
     else if (id === 'review') nodes = pageReview();
     else if (id === 'reconcile') nodes = pageReconcile();
     else if (id === 'handoff') nodes = pageHandoff();
+    else if (id === 'planning') nodes = pagePlanning();
     else if (tabOf(id)) nodes = pageSchedule(tabOf(id));
     else nodes = pageHome();
   } catch (err) {
@@ -1251,6 +1255,7 @@ async function refresh() {
   // own code changed underneath it and what is on screen may be out of date.
   state.pageVersion ||= data.page_version;
   if (data.page_version && data.page_version !== state.pageVersion) showStaleBanner();
+  if (data.server_stale) showRestartBanner();
 
   renderHeader();
   if (!state.current) {
@@ -1366,6 +1371,7 @@ setInterval(async () => {
   try {
     const data = await getJSON('/api/version');
     if (state.pageVersion && data.page_version && data.page_version !== state.pageVersion) showStaleBanner();
+    if (data.server_stale) showRestartBanner();
   } catch { /* the server may be restarting; the next tick will tell */ }
 }, 60000);
 

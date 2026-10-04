@@ -2382,6 +2382,45 @@ async function profileAction(payload) {
   return true;
 }
 
+/** A return's name as a folder name, the way the server makes it
+ *  (paths.folder_name): less what a file system refuses. */
+function folderName(name) {
+  return String(name || '').replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ')
+    .replace(/^[ .]+|[ .]+$/g, '').replace(/\s+/g, ' ') || 'profile';
+}
+
+/** The folder a return called `name` keeps in the Flow home, on this machine. */
+function returnFolderPath(name, ...inside) {
+  const home = String(state.home?.path || '').replace(/[\\/]+$/, '');
+  const sep = home.includes('\\') ? '\\' : '/';
+  return [home, folderName(name), ...inside].filter(Boolean).join(sep);
+}
+
+/** A folder as it is thought of: relative to the Flow home when inside it. */
+function shortPath(path) {
+  const home = String(state.home?.path || '').replace(/[\\/]+$/, '');
+  const text = String(path || '');
+  return home && text.toLowerCase().startsWith(home.toLowerCase()) && /[\\/]/.test(text[home.length] || '')
+    ? text.slice(home.length + 1) : text;
+}
+
+/** The warning before a return's folder moves. Resolves true only when
+ *  the move is confirmed. */
+function confirmFolderMove(title, paragraphs, label) {
+  const dialog = $('#move-dialog');
+  $('#move-title').textContent = title;
+  $('#move-message').replaceChildren(...paragraphs.filter(Boolean)
+    .map((t) => (typeof t === 'string' ? el('p', {}, t) : t)));
+  $('#move-confirm').textContent = label;
+  dialog.returnValue = '';
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'move'), { once: true });
+    dialog.showModal();
+  });
+}
+
+const CLOSE_OPEN_FILES = 'Close any file from it that is open, such as results.xlsx in Excel, first.';
+
 /** Financial years to choose from: the current one and the six before it,
  *  newest first. A year already chosen stays in the list even if older. */
 function fyOptions(keep) {
@@ -2424,40 +2463,36 @@ function homeCard() {
     el('div', { class: 'card-body' },
       el('p', {}, `This folder (chosen by ${home.source || 'the default'}) holds everything personal: the `
         + 'list of returns, looked-up exchange rates and each return’s documents and results. By '
-        + `convention a return called X keeps its documents in X/${home.input_folder || 'documents'} and `
-        + `its results in X/${home.output_folder || 'results'}. A folder can also be any full path.`),
+        + `convention a return called X has a folder X, with its documents in X/${home.input_folder || 'documents'} `
+        + 'and everything Flow produces from them beside it. The documents can be kept elsewhere.'),
       el('p', {}, 'To keep it somewhere else, set the FLOW_HOME environment variable, or put a file '
         + 'called flow.local.json beside the program containing {"home": "D:/somewhere"}, and restart.'),
       el('p', {}, cloud.length
         ? `${cloud.map((c) => `${c.kind} is at ${c.path}`).join('; ')}. “Put on ${cloud[0].kind}” moves a `
-          + 'return’s two folders there; Drive then keeps them in step.'
+          + 'return’s documents there; the return’s own folder stays in the Flow home.'
         : 'Google Drive: with Google Drive for desktop installed, a Drive is an ordinary folder (for example '
           + 'G:/My Drive), and a return is put on it by giving that path as its folders.')));
 }
 
-/** Both of a return's folders into a synced Drive folder, contents and all. */
+/** A return's documents into a synced Drive folder, contents and all. */
 async function putOnDrive(p, drive) {
   const base = `${drive.path}/Flow/${p.name}`;
-  if (!confirm(`Move the documents and results of "${p.name}" to ${drive.kind}?
+  if (!confirm(`Move the documents of "${p.name}" to ${drive.kind}?
 
 ${base}/${state.home.input_folder}
-${base}/${state.home.output_folder}
 
 ${drive.kind} will upload them to your Google account and keep them in step. `
     + `Flow itself sends nothing anywhere. Wait for Drive to finish syncing before `
-    + `working on another machine.`)) return;
-  if (await profileAction({ action: 'move', id: p.id, field: 'source_dir',
-                            target: `${base}/${state.home.input_folder}` })) {
-    await profileAction({ action: 'move', id: p.id, field: 'data_dir',
-                          target: `${base}/${state.home.output_folder}` });
-  }
+    + `working on another machine. The return’s own folder stays in the Flow home.`)) return;
+  await profileAction({ action: 'move', id: p.id, field: 'source_dir',
+                      target: `${base}/${state.home.input_folder}` });
 }
 
 // Which settings sit in which section of a return. Anything added to
 // profiles.FIELDS later and not named here lands under the tax settings.
 const RETURN_SECTIONS = {
-  person: ['dob', 'sex'],
-  tax: ['regime', 'age_band', 'audit_44ab'],
+  person: ['dob', 'age_band', 'sex'],
+  tax: ['regime', 'audit_44ab'],
   reading: ['engine', 'excel_export'],
 };
 
@@ -2487,6 +2522,22 @@ function settingControl(key, field, value, onChange) {
     chosen?.note || field.note ? el('small', {}, chosen?.note || field.note) : null);
 }
 
+/** One titled part of a return's card. */
+const retSection = (title, hint, ...body) => el('section', { class: 'ret-section' },
+  el('div', { class: 'ret-section-h' }, el('h3', {}, title), hint ? el('p', {}, hint) : null), ...body);
+const retGrid = (...kids) => el('div', { class: 'ret-grid' }, kids);
+
+const RETURN_HINT = 'What it is called and which year it is for. The name identifies the return, '
+  + 'and its folder is named after it.';
+
+/** A return's folder, read-only under its name: it follows the name, so there
+ *  is nothing to choose. The path can still be selected and copied. */
+const folderBox = (id, path) => el('input', { id, class: 'ret-readonly', readonly: '', spellcheck: 'false',
+                                              value: path || '', title: path || '',
+                                              placeholder: 'Follows the return name' });
+const returnFolderField = (box, note, after = null) => el('div', { class: 'ret-field ret-span' },
+  el('label', { for: box.id }, 'Folder'), box, note, after);
+
 /** The selected return: everything about it, changed with one Save. */
 function returnDetail(p, isActive, store) {
   const ui = state.ui.returns;
@@ -2515,9 +2566,6 @@ function returnDetail(p, isActive, store) {
     el('label', { for: `ret-${key}` }, label),
     el('input', { id: `ret-${key}`, value: value || '', ...attrs, oninput: (e) => change(key, e.target.value) }),
     attrs.note ? el('small', {}, attrs.note) : null);
-  const section = (title, hint, ...kids) => el('section', { class: 'ret-section' },
-    el('div', { class: 'ret-section-h' }, el('h3', {}, title), hint ? el('p', {}, hint) : null),
-    el('div', { class: 'ret-grid' }, kids));
   const settingsOf = (group) => (group === 'tax'
     ? [...RETURN_SECTIONS.tax, ...Object.keys(fields).filter((k) => !Object.values(RETURN_SECTIONS).flat().includes(k))]
     : RETURN_SECTIONS[group]).filter((k) => fields[k]).map((k) => settingControl(k, fields[k], settings[k], change));
@@ -2525,63 +2573,125 @@ function returnDetail(p, isActive, store) {
   const fy = fySelect(draft.fy ?? p.fy, { id: 'ret-fy', onchange: (e) => change('fy', e.target.value) });
   const sharedWith = (store.profiles || []).filter((o) => o.id !== p.id && o.source_path === p.source_path).map((o) => o.name);
 
-  // Two different things, kept apart: "Change location" points the return at
-  // another folder and leaves every file where it is; "Move…" carries the
-  // folder's contents to the new place.
-  const folderRow = (label, which, path, exists, field) => {
-    const row = el('div', { class: 'ret-folder' });
-    const view = () => row.replaceChildren(
-      el('div', { class: 'ret-folder-h' }, el('b', {}, label),
-        exists ? null : chip('not found on this machine', 'warn')),
-      el('div', { class: 'ret-path', title: path }, path || '—'),
-      el('div', { class: 'ret-folder-acts' },
-        el('button', { class: 'ghost small', type: 'button', onclick: () => openReturnFolder(p.id, which) },
-           icon('documents'), 'Open'),
-        el('button', { class: 'ghost small', type: 'button', onclick: (e) => copyText(path || '', e.currentTarget) },
-           icon('copy'), 'Copy path'),
-        el('button', { class: 'ghost small', type: 'button', onclick: edit,
-                       title: 'Use another folder. Nothing is moved or copied.' }, icon('pencil'), 'Change location'),
-        el('button', { class: 'ghost small', type: 'button',
-                       title: 'Carry this folder’s contents to a new place, and use that.',
-                       onclick: () => {
-          const target = prompt(`Move the ${label.toLowerCase()} to which folder? Everything in it moves too.`, path);
-          if (target && target !== path) profileAction({ action: 'move', id: p.id, field, target });
-        } }, 'Move…')));
-    const edit = () => {
-      const box = el('input', { value: path || '', spellcheck: 'false', class: 'ret-path-input',
-        onkeydown: (e) => { if (e.key === 'Enter') use(); if (e.key === 'Escape') view(); } });
-      const use = async () => {
-        const target = box.value.trim();
-        if (!target || target === path) { view(); return; }
-        if (which === 'data' && !confirm(`Write this return's results to\n${target}\n\nThe current results stay where they are, and this return starts from what is in the new folder.`)) return;
-        if (await profileAction({ action: 'update', id: p.id, patch: { [field]: target } })) {
-          toast(which === 'source'
-            ? 'Documents are now read from the new folder. Sort the documents again so each schedule finds its papers.'
-            : 'Results are now written to the new folder.');
-        }
-      };
-      row.replaceChildren(
-        el('div', { class: 'ret-folder-h' }, el('b', {}, `${label}: use another folder`)),
-        box,
-        el('small', { class: 'ret-hint' }, which === 'source'
-          ? 'Paste the full path of the folder that holds the documents, for example D:\Tax\2025-26 or G:\My Drive\Tax. Nothing is moved or copied; the current folder is left as it is.'
-          : 'Paste the full path of the folder to write results to. Nothing is moved; the current results stay where they are.'),
-        el('div', { class: 'ret-folder-acts' },
-          el('button', { class: 'primary small', type: 'button', onclick: use }, 'Use this folder'),
-          el('button', { class: 'ghost small', type: 'button', onclick: view }, 'Cancel')));
-      box.focus();
-      box.select();
-    };
-    view();
-    return row;
+  // The name identifies the return and its folder is named after it, so the
+  // folder sits under the name, read-only, saying where a new name moves it.
+  // Its results inside are Flow's business, unless an earlier version left
+  // them elsewhere and they need moving in.
+  const folderNote = el('small', {});
+  const showFolder = (name) => {
+    const moving = !!name.trim() && folderName(name).toLowerCase() !== folderName(p.name).toLowerCase();
+    folderNote.textContent = moving
+      ? `Moves to ${returnFolderPath(name)} when you save.`
+      : 'Named after the return. Renaming the return moves it, with everything in it.';
+    folderNote.classList.toggle('ret-pending', moving);
   };
+  showFolder(draft.name ?? p.name);
+  const moveResultsIn = async () => {
+    const ok = await confirmFolderMove('Move the results into the return’s folder?', [
+      `This return’s results are in ${shortPath(p.data_path)}, outside its own folder. They move to:`,
+      el('p', { class: 'ret-path' }, p.conventional_data_path),
+      `Nothing needs to be redone. ${CLOSE_OPEN_FILES}`,
+    ], 'Move them');
+    if (ok && await profileAction({ action: 'convention', id: p.id })) {
+      toast(`Moved the results to ${p.conventional_data_path}.`);
+    }
+  };
+  const nameField = el('div', { class: 'ret-field' },
+    el('label', { for: 'ret-name' }, 'Return name'),
+    el('input', { id: 'ret-name', value: draft.name ?? p.name, spellcheck: 'false',
+                  oninput: (e) => { change('name', e.target.value); showFolder(e.target.value); } }));
+  const folderField = returnFolderField(folderBox('ret-folder', p.folder_path || returnFolderPath(p.name)),
+    folderNote,
+    p.data_conventional === false ? el('div', { class: 'ret-legacy' },
+      chip('its results are kept elsewhere', 'warn'),
+      el('button', { class: 'ghost small', type: 'button', onclick: moveResultsIn,
+                     title: 'Keep this return’s results in its own folder.' }, 'Move them here…')) : null);
+
+  // The documents are the one folder a return chooses: by default in its own
+  // folder, or wherever the papers already are. "Change location" points the
+  // return elsewhere and moves nothing; "Move…" carries the files along.
+  const documents = el('div', { class: 'ret-folder' });
+  const viewDocuments = () => documents.replaceChildren(...[
+    el('div', { class: 'ret-path', title: p.source_path }, p.source_path || '—'),
+    p.source_path_exists ? null : el('div', {}, chip('not found on this machine', 'warn')),
+    el('div', { class: 'ret-folder-acts' },
+      el('button', { class: 'ghost small', type: 'button', onclick: () => openReturnFolder(p.id, 'source') },
+         icon('documents'), 'Open'),
+      el('button', { class: 'ghost small', type: 'button', onclick: (e) => copyText(p.source_path || '', e.currentTarget) },
+         icon('copy'), 'Copy path'),
+      el('button', { class: 'ghost small', type: 'button', onclick: editDocuments,
+                     title: 'Use another folder. Nothing is moved or copied.' }, icon('pencil'), 'Change location'),
+      el('button', { class: 'ghost small', type: 'button',
+                     title: 'Carry this folder’s contents to a new place, and use that.',
+                     onclick: () => {
+        // Offered the return's own folder first: that is where documents belong
+        // unless they are deliberately kept somewhere else.
+        const target = prompt('Move the documents to which folder? Everything in it moves too.',
+                              p.source_conventional === false ? p.conventional_source_path : p.source_path);
+        if (target && target !== p.source_path) {
+          profileAction({ action: 'move', id: p.id, field: 'source_dir', target });
+        }
+      } }, 'Move…')),
+  ].filter(Boolean));
+  const editDocuments = () => {
+    const box = el('input', { value: p.source_path || '', spellcheck: 'false', class: 'ret-path-input',
+      onkeydown: (e) => { if (e.key === 'Enter') use(); if (e.key === 'Escape') viewDocuments(); } });
+    const use = async () => {
+      const target = box.value.trim();
+      if (!target || target === p.source_path) { viewDocuments(); return; }
+      if (await profileAction({ action: 'update', id: p.id, patch: { source_dir: target } })) {
+        toast('Documents are now read from the new folder. Sort the documents again so each schedule finds its papers.');
+      }
+    };
+    documents.replaceChildren(
+      box,
+      el('small', { class: 'ret-hint' },
+        'Paste the full path of the folder that holds the documents, for example D:\\Tax\\2025-26 or G:\\My Drive\\Tax. Nothing is moved or copied; the current folder is left as it is.'),
+      el('div', { class: 'ret-folder-acts' },
+        el('button', { class: 'primary small', type: 'button', onclick: use }, 'Use this folder'),
+        el('button', { class: 'ghost small', type: 'button', onclick: viewDocuments }, 'Cancel')));
+    box.focus();
+    box.select();
+  };
+  viewDocuments();
+  const documentsHint = sharedWith.length
+    ? `Shared with ${sharedWith.join(', ')}: the same papers, read into separate returns.`
+    : p.source_conventional
+      ? 'Kept in the return’s folder. Point the return at another folder only if your papers are already '
+        + 'somewhere else, such as Google Drive.'
+      : 'Read from a folder outside the return’s folder.';
 
   const save = async () => {
     const patch = { ...draft };
     if (!Object.keys(patch).length) return;
+    // The return's folder is named after it, so a new name moves the folder:
+    // the results always, the documents when they are in it. Never without
+    // this warning; the server refuses a rename that was not confirmed.
+    const newName = (patch.name ?? p.name).trim();
+    const renamed = !!newName && folderName(newName).toLowerCase() !== folderName(p.name).toLowerCase();
+    const newFolder = returnFolderPath(newName);
+    if (renamed) {
+      const docsMove = p.source_conventional;
+      const ok = await confirmFolderMove(`Rename to “${newName}”?`, [
+        'A return’s folder is named after it, so renaming it moves the folder to:',
+        el('p', { class: 'ret-path' }, newFolder),
+        (docsMove && p.data_conventional
+          ? `Its documents and results move from ${shortPath(returnFolderPath(p.name))}.`
+          : `Its results move from ${shortPath(p.data_path)}`
+            + (docsMove ? ` and its documents from ${shortPath(p.source_path)}.` : '.'))
+          + ' Nothing needs to be redone.',
+        docsMove && sharedWith.length
+          ? `${sharedWith.join(', ')} also ${sharedWith.length > 1 ? 'read' : 'reads'} these documents, `
+            + 'and will read them from the new folder.' : '',
+        docsMove ? '' : `The documents stay in ${shortPath(p.source_path)}, outside the return’s folder.`,
+        CLOSE_OPEN_FILES,
+      ], 'Rename and move');
+      if (!ok) return;
+      patch.move_folder = true;
+    }
     ui.draft = {};
     if (await profileAction({ action: 'update', id: p.id, patch })) {
-      toast(`Saved the changes to ${patch.name || p.name}.`);
+      toast(renamed ? `Renamed. Its folder is now ${newFolder}.` : `Saved the changes to ${newName}.`);
     } else {
       ui.draft = patch;               // refused: keep what was typed
     }
@@ -2604,27 +2714,24 @@ function returnDetail(p, isActive, store) {
                          } },
              'Use this return')),
     el('div', { class: 'card ret-card' },
-      section('The person', 'Name the return as you like. The PAN and date of birth also open the password-protected AIS, TIS and Form 26AS.',
-        input('name', 'Return name', draft.name ?? p.name),
-        input('pan', 'PAN', draft.pan ?? p.pan, { placeholder: 'AAAAA9999A', maxlength: '10',
-              style: 'text-transform:uppercase' }),
-        ...settingsOf('person')),
-      section('How the tax is worked out', null,
-        el('div', { class: 'ret-field' }, el('label', { for: 'ret-fy' }, 'Financial year'), fy,
-           el('small', {}, 'Tax rates are built in for FY 2025-26.')),
-        ...settingsOf('tax')),
-      section('Reading and export', null, ...settingsOf('reading'),
-        el('div', { class: 'ret-field ret-note' },
-          el('a', { class: 'linkish', href: '#engines' }, 'Reading engine settings and local models'),
-          el('small', {}, 'Models, time limits, and open models that run on this computer.'))),
-      el('section', { class: 'ret-section' },
-        el('div', { class: 'ret-section-h' }, el('h3', {}, 'Folders'),
-          el('p', {}, sharedWith.length
-            ? `The documents folder is shared with ${sharedWith.join(', ')}: same papers, separate results.`
-            : 'Where this return’s documents are read from, and where its results are written.')),
-        el('div', { class: 'ret-folders' },
-          folderRow('Documents', 'source', p.source_path, p.source_path_exists, 'source_dir'),
-          folderRow('Results', 'data', p.data_path, p.data_path_exists, 'data_dir')),
+      retSection('Return', RETURN_HINT,
+        retGrid(nameField,
+          el('div', { class: 'ret-field' }, el('label', { for: 'ret-fy' }, 'Financial year'), fy,
+             el('small', {}, 'Tax rates are built in for FY 2025-26.')),
+          folderField)),
+      retSection('The person', 'The PAN and date of birth also open the password-protected AIS, TIS and Form 26AS.',
+        retGrid(
+          input('pan', 'PAN', draft.pan ?? p.pan, { placeholder: 'AAAAA9999A', maxlength: '10',
+                style: 'text-transform:uppercase' }),
+          ...settingsOf('person'))),
+      retSection('How the tax is worked out', null, retGrid(...settingsOf('tax'))),
+      retSection('Reading and export', null,
+        retGrid(...settingsOf('reading'),
+          el('div', { class: 'ret-field ret-note' },
+            el('a', { class: 'linkish', href: '#engines' }, 'Reading engine settings and local models'),
+            el('small', {}, 'Models, time limits, and open models that run on this computer.')))),
+      retSection('Documents', documentsHint,
+        documents,
         (state.home?.cloud || []).length ? el('div', { class: 'ret-drive' },
           (state.home.cloud || []).map((drive) => el('button', { class: 'ghost small', type: 'button',
             onclick: () => putOnDrive(p, drive) }, `Put on ${drive.kind}`))) : null),
@@ -2634,8 +2741,8 @@ function returnDetail(p, isActive, store) {
         el('button', { class: 'primary', type: 'button', onclick: save }, 'Save changes'))),
     el('details', { class: 'ret-danger' },
       el('summary', {}, 'Remove this return'),
-      el('p', {}, 'Removes it from the list only. Its documents and results stay on disk, and can be '
-                  + 'brought back by adding a return that points at the same folders.'),
+      el('p', {}, 'Removes it from the list only. Its folder and documents stay on disk, and a new '
+                  + 'return with the same name uses that folder again.'),
       el('button', { class: 'ghost danger', type: 'button', disabled: store.profiles.length < 2,
         title: store.profiles.length < 2 ? 'This is the only return; add another before removing it.' : '',
         onclick: async () => {
@@ -2644,23 +2751,23 @@ function returnDetail(p, isActive, store) {
         } }, 'Remove from the list')));
 }
 
-/** A new return: a name, a year, and folders that follow the name. */
+/** A new return: a name and a year; its folder follows the name. */
 function newReturnForm() {
-  const derive = (name) => name.replace(/[<>:"/\\|?*\x00-\x1f]/g, ' ').trim().replace(/[ .]+$/, '').replace(/\s+/g, ' ');
-  let typedFolders = false;
-  const src = el('input', { id: 'np-src', oninput: () => { typedFolders = true; } });
-  const data = el('input', { id: 'np-data', oninput: () => { typedFolders = true; } });
-  const name = el('input', { id: 'np-name', placeholder: 'for example Asha 2025-26', autofocus: '',
+  let typedSource = false;
+  const docsDefault = (n) => (n.trim() ? `${folderName(n)}/${state.home?.input_folder || 'documents'}` : '');
+  const src = el('input', { id: 'np-src', spellcheck: 'false', oninput: () => { typedSource = true; } });
+  const folderPath = folderBox('np-folder', '');
+  const name = el('input', { id: 'np-name', placeholder: 'for example Asha 2025-26', autofocus: '', spellcheck: 'false',
     oninput: (e) => {
-      const f = derive(e.target.value);
-      if (!typedFolders) { src.value = f ? `${f}/${state.home?.input_folder || 'documents'}` : ''; data.value = f ? `${f}/results` : ''; }
+      folderPath.value = folderPath.title = e.target.value.trim() ? returnFolderPath(e.target.value) : '';
+      if (!typedSource) src.value = docsDefault(e.target.value);
     } });
   const create = async () => {
     const wanted = name.value.trim();
     if (!wanted) { name.focus(); return; }
     state.ay = null; state.runs = {};
     if (await profileAction({ action: 'create', name: wanted, fy: $('#np-fy').value, pan: $('#np-pan').value,
-                              source_dir: src.value, data_dir: data.value })) {
+                              source_dir: src.value })) {
       const made = (state.profiles?.profiles || []).find((x) => x.name === wanted);
       toast(`Added ${wanted}. It is now the return in use.`);
       select('_profiles', made?.id || null);
@@ -2672,20 +2779,20 @@ function newReturnForm() {
       el('div', { class: 'ret-head-t' }, el('h2', {}, 'New return'),
         el('div', { class: 'ret-meta' }, 'One person and one financial year. Everything else can be set afterwards.'))),
     el('div', { class: 'card ret-card' },
-      el('section', { class: 'ret-section' },
-        el('div', { class: 'ret-grid' },
+      retSection('Return', RETURN_HINT,
+        retGrid(
           el('div', { class: 'ret-field' }, el('label', { for: 'np-name' }, 'Return name'), name),
           el('div', { class: 'ret-field' }, el('label', { for: 'np-fy' }, 'Financial year'), fySelect(state.fy, { id: 'np-fy' })),
-          el('div', { class: 'ret-field' }, el('label', { for: 'np-pan' }, 'PAN (optional)'),
-             el('input', { id: 'np-pan', placeholder: 'AAAAA9999A', maxlength: '10', style: 'text-transform:uppercase' })))),
-      el('section', { class: 'ret-section' },
-        el('div', { class: 'ret-section-h' }, el('h3', {}, 'Folders'),
-          el('p', {}, 'Made for you from the name, in your Flow home. Change them only to use folders that already exist, such as a Google Drive folder.')),
+          returnFolderField(folderPath, el('small', {}, 'Made when the return is created.')))),
+      retSection('The person', 'The PAN and date of birth open the password-protected AIS, TIS and Form 26AS. '
+                 + 'Both can be added later.',
+        retGrid(el('div', { class: 'ret-field' }, el('label', { for: 'np-pan' }, 'PAN (optional)'),
+          el('input', { id: 'np-pan', placeholder: 'AAAAA9999A', maxlength: '10', style: 'text-transform:uppercase' })))),
+      retSection('Documents', 'Kept in the return’s folder. Choose another folder only if your papers are '
+                 + 'already somewhere else, such as Google Drive.',
         el('details', { class: 'ret-advanced' },
-          el('summary', {}, 'Choose different folders'),
-          el('div', { class: 'ret-grid' },
-            el('div', { class: 'ret-field' }, el('label', { for: 'np-src' }, 'Documents folder'), src),
-            el('div', { class: 'ret-field' }, el('label', { for: 'np-data' }, 'Results folder'), data)))),
+          el('summary', {}, 'Use a different documents folder'),
+          retGrid(el('div', { class: 'ret-field ret-span' }, el('label', { for: 'np-src' }, 'Documents folder'), src)))),
       el('div', { class: 'ret-save' },
         el('span', {}, 'The new return becomes the one in use.'),
         el('button', { class: 'ghost', type: 'button', onclick: () => select('_profiles') }, 'Cancel'),
@@ -2864,8 +2971,18 @@ async function ensureSchema(id) {
   }
 }
 
+/** The server's own code changed after it started. Reloading the page cannot
+ *  help: until Flow is restarted, anything new answers "not found". */
+function showRestartBanner() {
+  if ($('#restart-banner')) return;
+  $('#stale-banner')?.remove();
+  document.body.prepend(el('div', { id: 'restart-banner', class: 'stale-banner', role: 'status' },
+    'Flow has been updated since it was started, so parts of this page may not work. Restart it to use the '
+    + 'changes: close its window (or press Ctrl+C in it), run flow.cmd again, then reload this page.'));
+}
+
 function showStaleBanner() {
-  if ($('#stale-banner')) return;
+  if ($('#stale-banner') || $('#restart-banner')) return;
   const bar = el('div', { id: 'stale-banner', class: 'stale-banner', role: 'status' },
     'This page has been updated since you opened it; what you see may be the old version. ',
     el('button', { class: 'primary small', onclick: () => location.reload() }, 'Reload'));

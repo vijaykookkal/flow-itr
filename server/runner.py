@@ -256,7 +256,9 @@ def run(ay: str, tab_id: str, engine_name: str = "mock", force: bool = False,
     tab = paths.tab(tab_id)
     schedule = tab["id"]
 
-    if tab["kind"] != "extract":
+    # Planning notes are read exactly like a schedule; only what reads the
+    # result differs (the Planning page, never the return's computation).
+    if tab["kind"] not in ("extract", "plan"):
         raise ValueError(f"tab {tab_id!r} is a {tab['kind']} tab; it has no extraction step")
     if not tab.get("implemented"):
         raise ValueError(f"tab {tab_id!r} is registered but not built yet")

@@ -271,6 +271,18 @@
       ],
       "implemented": true,
       "_note": "Transcription of a return already filed, so the computed figures can be set beside it. The only schedule whose job is fidelity rather than correctness."
+    },
+    {
+      "id": "plan",
+      "no": 18,
+      "title": "Planning notes",
+      "kind": "plan",
+      "schedules": [],
+      "sources": [
+        "11_planning"
+      ],
+      "implemented": true,
+      "_note": "Not part of the return. Notes of what is still to come this year -- salary, a bonus, sales planned, deductions intended -- read for the Planning page's projection of the year. The classifier routes such notes here and nowhere else, so an expectation is never read as evidence for a schedule, and the computation of the return never reads this tab."
     }
   ]
 }

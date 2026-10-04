@@ -61,6 +61,14 @@
   --viz-1-soft: #CDE2FB;
   --viz-on-1: #FFFFFF;
   --viz-quiet: #8794A7;
+  /* A second measure beside the first (surcharge beside income tax). The
+     pair passes the categorical checks, colour-blind separation included,
+     on --surf in both themes. */
+  --viz-2: #EB6834;
+  --viz-on-2: #1B1206;
+  /* A third, for cess beside them. Checked with the other two; on white it
+     sits just under 3:1, so the key, the tooltip and the table carry it too. */
+  --viz-3: #1BAF7A;
 
   --blue: #0B57D0;
   --on-blue: #FFFFFF;
@@ -106,7 +114,7 @@
     --bg: #0B1220; --surf: #121B2C; --surf2: #162136; --fill: #1C2941;
     --line: #26344E; --line2: #3A4C6B;
     --ink: #E8EEF8; --ink2: #B7C3D6; --muted: #93A1B8;
-    --viz-1: #3987E5; --viz-1-soft: #1B3A6B; --viz-on-1: #06162E; --viz-quiet: #A3AFC2;
+    --viz-1: #3987E5; --viz-1-soft: #1B3A6B; --viz-on-1: #06162E; --viz-quiet: #A3AFC2; --viz-2: #D95926; --viz-on-2: #1B1206; --viz-3: #199E70;
     --blue: #8AB4F8; --on-blue: #06224F; --blue-bg: #17294A; --blue-ink: #C2D8FF; --blue-line: #34558F;
     --amber-ink: #FFD18A; --amber-bg: #372810; --amber-line: #6A4A15; --amber-icon: #F0A63A;
     --teal-ink: #86E2C4; --teal-bg: #10302A; --teal-line: #1F5A4B;
@@ -120,7 +128,7 @@
   --bg: #0B1220; --surf: #121B2C; --surf2: #162136; --fill: #1C2941;
   --line: #26344E; --line2: #3A4C6B;
   --ink: #E8EEF8; --ink2: #B7C3D6; --muted: #93A1B8;
-  --viz-1: #3987E5; --viz-1-soft: #1B3A6B; --viz-on-1: #06162E; --viz-quiet: #A3AFC2;
+  --viz-1: #3987E5; --viz-1-soft: #1B3A6B; --viz-on-1: #06162E; --viz-quiet: #A3AFC2; --viz-2: #D95926; --viz-on-2: #1B1206; --viz-3: #199E70;
   --blue: #8AB4F8; --on-blue: #06224F; --blue-bg: #17294A; --blue-ink: #C2D8FF; --blue-line: #34558F;
   --amber-ink: #FFD18A; --amber-bg: #372810; --amber-line: #6A4A15; --amber-icon: #F0A63A;
   --teal-ink: #86E2C4; --teal-bg: #10302A; --teal-line: #1F5A4B;
@@ -999,6 +1007,98 @@ a.legend-row:hover { background: var(--surf2); }
 #viz-tip b { display: block; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
 #viz-tip span { display: block; }
 #viz-tip .tip-sub { color: var(--muted); }
+#viz-tip .tip-row { display: grid; grid-template-columns: 12px auto auto; justify-content: start;
+                   align-items: center; gap: 7px; }
+#viz-tip .tip-row b { display: inline; font-size: 13px; }
+#viz-tip .tip-row span { display: inline; }
+#viz-tip .tip-key { display: block; width: 12px; height: 2.5px; border-radius: 2px; }
+#viz-tip .tip-key.tax { background: var(--viz-1); }
+#viz-tip .tip-key.sur { background: var(--viz-2); }
+#viz-tip .tip-key.cess { background: var(--viz-3); }
+#viz-tip .tip-key.kept { background: var(--line2); }
+
+/* ---------- planning ---------- */
+
+/* The overview: one card per question, each opening to its detail. */
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin: 16px 0; }
+.plan-card { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border: 1px solid var(--line);
+             border-radius: 12px; background: var(--surf); color: var(--ink); text-decoration: none;
+             transition: border-color .15s, box-shadow .15s; }
+.plan-card:hover, .plan-card:focus-visible { border-color: var(--blue-line); box-shadow: 0 2px 10px rgba(14, 26, 43, .08); }
+.plan-card-h { display: flex; align-items: center; gap: 8px; font: 600 13px/1.3 var(--sans); color: var(--ink2); }
+.plan-card-h .ico { width: 16px; height: 16px; color: var(--muted); }
+.plan-card-h .plan-go { margin-left: auto; }
+.plan-card:hover .plan-go { color: var(--blue); }
+.plan-fig { font: 700 24px/1.2 var(--sans); letter-spacing: -.02em; margin-top: 8px; }
+.plan-cap { font-size: 12.5px; color: var(--muted); }
+.plan-line { margin: 8px 0 0; font-size: 13px; line-height: 1.45; color: var(--ink2); }
+.plan-meter { height: 8px; margin-top: 10px; }
+.plan-meter .meter-seg:first-child { border-radius: 4px 0 0 4px; }
+.plan-months { display: grid; gap: 4px; margin-top: 10px; }
+.plan-months small { font-size: 11.5px; color: var(--muted); }
+.plan-back { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600;
+             color: var(--blue); text-decoration: none; margin-bottom: 6px; }
+.plan-back .ico.back { width: 14px; height: 14px; transform: rotate(180deg); }
+.plan-hints { list-style: none; margin: 0; padding: 4px 18px 10px; }
+.plan-hints li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: start;
+                 padding: 12px 0; border-top: 1px solid var(--line); }
+.plan-hints li:first-child { border-top: 0; }
+.plan-hints .chip { justify-self: start; margin-top: 1px; }
+.plan-hints b { font-size: 13.5px; color: var(--ink); }
+.plan-hints p { margin: 3px 0 4px; font-size: 13px; line-height: 1.5; color: var(--ink2); max-width: 90ch; }
+.plan-form .ret-field small b { color: var(--ink2); font-weight: 600; }
+.plan-form-acts { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap;
+                  margin-top: 16px; }
+.plan-form-acts span { margin-right: auto; font-size: 12.5px; color: var(--muted); }
+.plan-form-acts .ico { width: 15px; height: 15px; }
+.plan-cite { color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+
+.plan-filters { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+.plan-scope { font-size: 12.5px; color: var(--muted); }
+.plan-key { margin: 0 0 14px; }
+.sw.k-tax { background: var(--viz-1); }
+.sw.k-sur { background: var(--viz-2); }
+.sw.k-cess { background: var(--viz-3); }
+.sw.k-kept { background: var(--fill); box-shadow: inset 0 0 0 1px var(--line2); }
+.plan-h { font: 600 13.5px/1.3 var(--sans); color: var(--ink); margin: 20px 0 8px; }
+.plan-sub { margin: -2px 0 10px; }
+.plan-notes { margin: 0; padding-left: 18px; display: grid; gap: 7px; font-size: 13px; line-height: 1.5;
+              color: var(--ink2); max-width: 92ch; }
+.plan-notes b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+tr.plan-you td { background: var(--blue-bg); font-weight: 600; }
+
+svg.taxshare { display: block; width: 100%; height: auto; overflow: visible; }
+svg.taxshare .band.tax { fill: var(--viz-1); }
+svg.taxshare .band.sur { fill: var(--viz-2); }
+svg.taxshare .band.cess { fill: var(--viz-3); }
+svg.taxshare .band.kept { fill: var(--fill); }
+svg.taxshare .gap { fill: none; stroke: var(--surf); stroke-width: 2; stroke-linejoin: round; }
+svg.taxshare .gap.thin { stroke-width: 1; }
+svg.taxshare .grid-over { stroke: var(--surf); stroke-width: 1; opacity: .6; }
+svg.taxshare .grid { stroke: var(--line); stroke-width: 1; }
+svg.taxshare .axis { stroke: var(--line2); stroke-width: 1; }
+svg.taxshare .tick { font: 400 11px var(--sans); fill: var(--muted); font-variant-numeric: tabular-nums; }
+svg.taxshare .cap { font: 600 11px var(--sans); fill: var(--ink2); }
+svg.taxshare .threshold { stroke: var(--ink2); stroke-width: 1; opacity: .45; }
+svg.taxshare .edge { fill: none; stroke: var(--line2); stroke-width: 1; }
+/* Labels inside a band wear a halo of the band's own colour, so a gridline
+   stops short of the text instead of running through it. */
+svg.taxshare .in-kept { font: 600 12px var(--sans); fill: var(--ink2); pointer-events: none;
+                        paint-order: stroke; stroke: var(--fill); stroke-width: 4px; stroke-linejoin: round; }
+svg.taxshare .in-tax { font: 600 12px var(--sans); fill: var(--viz-on-1); pointer-events: none;
+                       paint-order: stroke; stroke: var(--viz-1); stroke-width: 4px; stroke-linejoin: round; }
+svg.taxshare .in-sur { font: 600 12px var(--sans); fill: var(--viz-on-2); pointer-events: none;
+                       paint-order: stroke; stroke: var(--viz-2); stroke-width: 4px; stroke-linejoin: round; }
+svg.taxshare .you { stroke: var(--ink); stroke-width: 1.5; opacity: .7; pointer-events: none; }
+svg.taxshare .you-label { font: 600 12px var(--sans); fill: var(--ink); paint-order: stroke; stroke: var(--fill);
+                          stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
+svg.taxshare .you-label.on-surf { stroke: var(--surf); }
+svg.taxshare .you-dot { fill: var(--ink); stroke: var(--surf); stroke-width: 2; pointer-events: none; }
+svg.taxshare .cross { pointer-events: none; }
+svg.taxshare .cross-line { stroke: var(--ink); stroke-width: 1; opacity: .55; }
+svg.taxshare .cross-dot { fill: var(--surf); stroke: var(--ink); stroke-width: 2; }
+svg.taxshare .hit { fill: transparent; cursor: crosshair; outline: none; }
+svg.taxshare .hit:focus-visible { stroke: var(--blue); stroke-width: 1.5; }
 
 @media (max-width: 1100px) {
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1235,6 +1335,13 @@ b.ui { font-weight: 600; color: var(--ink); }
 .ret-field label { font: 600 12.5px/1.2 var(--sans); color: var(--ink2); }
 .ret-field input, .ret-field select { width: 100%; }
 .ret-field small { font-size: 12px; line-height: 1.4; color: var(--muted); }
+.ret-field small.ret-pending { color: var(--amber-ink); font-weight: 600; }
+.ret-span { grid-column: 1 / -1; }
+/* A return's folder: shown, not chosen. Reads as a field that cannot be typed in. */
+.ret-field input.ret-readonly, .ret-field input.ret-readonly:hover, .ret-field input.ret-readonly:focus {
+  font: 400 12.5px/1.45 var(--mono); color: var(--ink2); background: var(--surf2);
+  border: 1px dashed var(--line2); box-shadow: none; cursor: default; }
+.ret-legacy { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 .ret-folders { display: grid; gap: 12px; }
 .ret-folder { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surf2); }

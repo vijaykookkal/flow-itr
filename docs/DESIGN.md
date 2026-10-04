@@ -167,6 +167,10 @@ carry-forward set-off is strictly worse than computing it:
   is of this kind now: General was, until it turned out that the documents do
   state the identity and the bank accounts. It is read like any other, and the
   filing choices in it, which no document states, come back as questions.)
+- **Plan** — read like an extract tab, but never part of the return: notes of
+  what is still to come in the year, for the Planning page's projection (§17).
+  The computation's own collection of schedules skips it, and the classifier
+  routes such notes there and nowhere else.
 
 | # | Tab | ITR-3 schedules | Kind | Source folder |
 |---|---|---|---|---|
@@ -542,17 +546,25 @@ what makes "clone and go" true. What stays in the repository under `config/` is
 configuration of the *program*: the tabs and what each reads.
 
 **The convention.** A profile called X reads `<home>/X/documents` and writes
-`<home>/X/results`. Folders inside the home are stored relative to it, so
-the home moves between machines as one piece; a folder anywhere else is stored
-as an absolute path. Two profiles may share a documents folder (one set of
-papers, two regimes); no two may share a results folder.
+`<home>/X/results`. The documents folder may be pointed elsewhere; results
+always follow the return name, so there is no results folder to choose. A
+rename is a move of the return's folder, and the server refuses one the page
+has not confirmed after warning: the results always move, and the documents
+too when they are in `<home>/X/documents` (any other profile reading them is
+pointed at the new place). Moves are checked first and undone if one fails, so
+a file held open never leaves a return split across two folders. A results
+folder kept elsewhere by an earlier version stays in use until it is moved into
+the return's folder. Folders inside the home are stored relative to it, so the home moves
+between machines as one piece; an external documents folder is stored as an
+absolute path. Two profiles may share a documents folder (one set of papers,
+two regimes); no two may share a results folder.
 
-**Cloud folders are folders.** Pointing a profile at a synced Drive, OneDrive or
-Dropbox folder needs no code, because nothing below `paths.py` cares where a
-folder is, and the engine is granted folders by absolute path. The page offers
-"Put on Google Drive" when it finds a Drive for desktop mount
-(`paths.cloud_roots()`), and otherwise says what path to type. Nothing here
-calls a cloud API or holds a credential. The costs are the user's to accept and
+**Cloud folders are folders.** Pointing a profile's documents at a synced
+Drive, OneDrive or Dropbox folder needs no code, because nothing below
+`paths.py` cares where a folder is, and the engine is granted folders by
+absolute path. The page offers "Put on Google Drive" when it finds a Drive for
+desktop mount (`paths.cloud_roots()`). Results remain in the Flow home.
+Nothing here calls a cloud API or holds a credential. The costs are the user's to accept and
 are stated where the choice is made: the documents are then held by the cloud
 provider, and two machines must not work on one profile before syncing settles.
 
@@ -646,3 +658,38 @@ reasoning level. What a person changes on the Reading engines page is kept in
 `settings.json` in the Flow home and laid over those defaults
 (`server/settings.py`). A `git pull` then never overwrites a choice, and a push
 never publishes one; deleting the file returns everything to the defaults.
+
+## 17. Planning: the year projected from part of it
+
+A return is computed from evidence, which arrives after the year. A plan has to
+work in the middle of it, from six months of payslips, the sales made so far and
+a note of what is coming. `engine/projection.py` does that without a tax rule of
+its own:
+
+- **What is read so far** is the resolved schedules, exactly as the return uses
+  them.
+- **What is still expected** comes, field by field, from what was typed on the
+  Planning page, else from the planning notes (the `plan` tab, read by its own
+  prompt and schema, which transcribe each expectation with its period so the
+  arithmetic is done in code), else from scaling the months the salary
+  documents cover, else nothing. Each figure carries where it came from, and
+  the page says so beside it.
+- **The projection** adds the expected amounts to the schedules as entries of
+  their own, labelled as expected (an extra employer, an interest item, ledger
+  rows for planned sales placed by asset class and holding period), and runs
+  `compute.tax_for_regime` on the result. Every rate, cap, set-off and relief is
+  therefore the return's own. The expected entries exist only inside the
+  projection; nothing is written into a schedule. What was typed is kept in
+  `planning.json` beside the return's results.
+- **The cards** are questions asked of the same engine: the old regime's
+  break-even deduction (`extra_deduction`, capped like any Chapter VI-A amount),
+  the tax a loss of Rs 1 lakh would save, whether the unused 112A exemption
+  really costs nothing, advance tax by instalment against challans by their
+  dates, and foreign lots from Schedule FA with the date each turns long-term.
+- **Hints** are chosen by what is in the return, and those that call for action
+  before 31 March are shown only while the year is running.
+- **A year without rates.** The year one plans in is usually the one whose
+  Finance Act is not built in yet. The plan, never a return, then borrows the
+  latest rate table (`planning.planning_rates`) and says so at the top of the
+  page.
+

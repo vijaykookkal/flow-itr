@@ -139,6 +139,31 @@ Flow is a set of places you can open in any order. A typical first run:
    Type them into the e-filing utility and tick them off, or press
    **Export to Excel** to get the whole return as a workbook.
 
+**Planning**, after Hand-off, is for the year that is still running. Add a return
+for it in the middle of the year with whatever you have: payslips so far, the
+sales already made, and a note of what is coming ("salary Rs 3.5 lakh a month,
+bonus Rs 5 lakh in June, selling the 2024 RSUs in January"). Notes go with the
+documents (or in a folder called `11_planning`); they are read as expectations
+and never into the return. The page projects the year from all of it, and you
+can type over any expected figure. Its cards, each opening to the detail:
+
+- **Your year**: read so far, still expected, and the year's tax.
+- **Take-home and tax**: how the tax grows with income up to Rs 1.5 crore, where
+  the rebate and surcharge thresholds fall, and the stretches just past them
+  where earning more leaves you with less.
+- **Old or new regime**: the projected tax under each, and how much more in
+  deductions the old regime would need.
+- **Capital gains**: the tax on the year's gains, what a loss booked before
+  31 March would save, how much of the equity exemption is unused, losses
+  brought forward and when they expire, and foreign shares (RSUs) with the date
+  each lot turns long-term.
+- **Advance tax**: what is due by each instalment date against what was paid.
+
+Below them are hints chosen for what is in your return. Everything is worked
+out with the same rules as the computation, and nothing changes your return.
+For a year whose rates are not built into Flow yet, the plan uses the latest
+year's and says so.
+
 **Reading and computing are different.** Reading is done by the AI engine: it
 opens your documents and copies out the facts. Computing is done by Flow itself,
 with no AI: it applies the tax rules to those facts, instantly, and does so by
@@ -237,21 +262,26 @@ which year, its settings, its documents, and everything read and computed from
 them (your corrections and decisions, the computation, the reconciliation, the
 workbook). Each return keeps its own. Add one under
 **Returns** (at the top of the left panel) for a spouse, a parent, or
-another year. Each gets its own `documents` and `results` folders. Two returns
-can share one documents folder, for example to compare the old and new regimes.
+another year. Each gets its own folder in the Flow home, named after the
+return, holding its documents and everything Flow produces from them; the
+Returns page shows where it is. Two returns can share one documents folder, for
+example to compare the old and new regimes.
 
 ### Keeping your files somewhere else
 
-- **A different folder for one return:** on the Returns page, under Folders,
-  press **Change location** and paste a full path such as `D:\Tax\2025-26`.
-  Nothing is moved: the return simply reads from (or writes to) that folder.
-  **Move…** instead carries the folder's contents to the new place. A path that
-  is not a full path is taken from the Flow home.
+- **A different documents folder for one return:** on the Returns page, under
+  Folders, press **Change location** and paste a full path such as
+  `D:\Tax\2025-26`. Nothing is moved: the return simply reads from that folder.
+  **Move…** instead carries the folder's contents to the new place. Everything
+  Flow produces stays in the return's own folder in the Flow home.
+- **Renaming a return:** the return's folder follows its name, so a rename
+  moves it. Flow warns first and says what will move. Documents kept somewhere
+  else stay where they are.
 - **Google Drive:** install Google Drive for desktop, then type a Drive path
   such as `G:/My Drive/Flow/DEFAULT/documents`, or press "Put on Google Drive"
   on the return when Flow finds your Drive. Your documents are then stored in
-  your Google account. Let Drive finish syncing before opening the same return
-  on another computer.
+  your Google account; what Flow produces stays in the Flow home. Let Drive finish syncing
+  before opening the same return on another computer.
 - **Moving the whole home:** set the `FLOW_HOME` environment variable, or put a
   file called `flow.local.json` next to `flow.cmd` containing
   `{"home": "D:/somewhere"}`, and restart.
@@ -444,4 +474,3 @@ you may use, change and share it freely, keeping the copyright notice.
 
 The typefaces in `web/fonts/` (Figtree and IBM Plex Mono) are under the SIL Open
 Font License; their licence texts are beside them.
-

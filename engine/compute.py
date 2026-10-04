@@ -281,7 +281,10 @@ def rates_for_fx(docs: dict) -> dict:
     return fx.load_rates()
 
 
-def tax_for_regime(docs: dict, rates, regime: str, profile: dict) -> dict:
+def tax_for_regime(docs: dict, rates, regime: str, profile: dict, extra_deduction: int = 0) -> dict:
+    """`extra_deduction` is for planning only: a further Chapter VI-A amount,
+    beyond anything claimed, to ask "how much more would it take". It is
+    capped the way every deduction is, at the ordinary income."""
     # A filed return is here to be compared against, never to be computed
     # from. It is taken out of what the computation can reach before anything
     # else runs, so no schedule can lean on it even by accident, and it comes
@@ -291,6 +294,11 @@ def tax_for_regime(docs: dict, rates, regime: str, profile: dict) -> dict:
     sal = salary_head(docs.get("salary"), rates, regime)
     os_h = other_sources_head(docs.get("other_sources"), getattr(rates, "AY", "2026-27"))
     via = chapter_via(docs.get("deductions"), os_h, rates, regime, profile)
+    if extra_deduction:
+        via = {**via, "total_allowed": via["total_allowed"] + int(extra_deduction),
+               "lines": via["lines"] + [{"section": "Planning", "claimed": int(extra_deduction),
+                                         "allowed": int(extra_deduction),
+                                         "note": "A further deduction, for planning only"}]}
     # Section 32 relief is arithmetic on dates and costs, so it is computed
     # here and handed to Schedule BP, rather than being a figure someone typed
     # into the Depreciation tab and nobody could check.

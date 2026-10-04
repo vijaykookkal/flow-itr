@@ -1,4 +1,4 @@
-version: classify@2
+version: classify@3
 
 # Routing documents to ITR-3 schedules
 
@@ -89,6 +89,19 @@ them to the tabs they inform, as you would anyway.
 
 A broker's, bank's or employer's own statement is **not** one of these, even
 when it contains totals: it is evidence, not the department's record of it.
+
+## Notes about the year ahead
+
+A document about what is **still to come** this year -- a note the taxpayer
+wrote ("salary from October will be ...", "selling the 2024 RSUs in January",
+"PPF Rs 1.5 lakh in March"), an offer or increment letter, a CTC statement, a
+vesting schedule -- goes to **`plan` and to no other tab**.
+
+These are expectations, not evidence. Routing one to `salary` as well would
+have a figure someone hopes to be paid read as a figure that was paid. The
+Planning page sets them beside the schedules instead. A payslip, Form 16,
+broker statement or bank statement says what has already happened and goes to
+its schedule as usual, even in the middle of the year.
 
 ## A return that was already filed
 
